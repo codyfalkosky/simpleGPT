@@ -142,6 +142,8 @@ class GPT(tf.keras.Model):
             self.dataset[name] = self.dataset[name].repeat()
             self.dataset[name] = self.dataset[name].shuffle(10000)
             self.dataset[name] = self.dataset[name].batch(self.batch_size)
+            if hasattr(self, 'strategy'):
+                self.dataset[name] = self.strategy.experimental_distribute_dataset(self.dataset[name])
             self.dataset[name] = iter(self.dataset[name])
 
     def start_tpu(self):
@@ -149,8 +151,11 @@ class GPT(tf.keras.Model):
         tf.config.experimental_connect_to_cluster(self.resolver)
         # This is the TPU initialization code that has to be at the beginning.
         tf.tpu.experimental.initialize_tpu_system(self.resolver)
+        print('TPUs available:')
         for device in tf.config.list_logical_devices('TPU'):
             print(device)
+
+        self.strategy = tf.distribute.TPUStrategy(resolver)
 
 if __name__ == '__main__':
     potterGPT = GPT(8, 2, 2)
