@@ -3,7 +3,7 @@
 # ***
 
 import tensorflow as tf
-from tensorflow.keras.layers import Dense, Softmax, Dropout, LayerNormalization
+from tensorflow.keras.layers import Dense, Softmax, Dropout, LayerNormalization, Input, Embedding
 from tensorflow.keras.initializers import GlorotNormal
 
 
@@ -12,12 +12,39 @@ class FeedForward(tf.keras.layers.Layer):
 
     def __init__(self, in_chan, out_chan, inner_mult=4, dropout=.5):
         super().__init__()
-        self.linear1_m  = tf.Variable(GlorotNormal()([in_chan,                  int(out_chan*inner_mult)]),  name='linear1_m')
-        self.linear1_b  = tf.Variable(tf.zeros(int(out_chan*inner_mult)),                                    name='linear1_b')
+        self.in_chan    = in_chan
+        self.out_chan   = out_chan
+        self.inner_mult = inner_mult
+        
         self.relu       = tf.keras.layers.ReLU()
-        self.linear2_m  = tf.Variable(GlorotNormal()([int(out_chan*inner_mult), out_chan]),                  name='linear2_m')
-        self.linear2_b  = tf.Variable(tf.zeros(out_chan),                                                    name='linear2_b')
         self.dropout    = Dropout(dropout)
+
+    def build(self, input_shape):
+        self.linear1_m = self.add_weight(
+            shape = [self.in_chan, int(self.out_chan*self.inner_mult)],
+            initializer = 'glorot_normal',
+            name = 'linear1_m',
+            trainable = True
+        )
+        self.linear1_b = self.add_weight(
+            shape = [int(self.out_chan*self.inner_mult)],
+            initializer = 'zeros',
+            name = 'linear1_b',
+            trainable = True       
+        )
+        self.linear2_m = self.add_weight(
+            shape = [int(self.out_chan*self.inner_mult), self.out_chan],
+            initializer = 'glorot_normal',
+            name = 'linear2_m',
+            trainable = True
+        )
+        self.linear2_b = self.add_weight(
+            shape = [self.out_chan],
+            initializer = 'zeros',
+            name = 'linear2_b',
+            trainable = True
+        )
+        
 
     def call(self, x, training=False):
         # FFN(x) = max(0, xW1 + b1 )W2 + b2
@@ -60,16 +87,37 @@ class MuliHeadedMaskedSelfAttention(tf.keras.layers.Layer):
         # d_k = d_v = d_model / h - 3.2.2 page 5
         self.d_k      = out_chan // n_heads
 
-        # initalize all variable mats and activations
-        # key, query, value, linear, softmax, relu
-        self.key_mat    = tf.Variable(GlorotNormal()([self.in_chan,  self.n_heads, self.d_k]), name='key_matrix')
-        self.query_mat  = tf.Variable(GlorotNormal()([self.in_chan,  self.n_heads, self.d_k]), name='query_matrix')
-        self.value_mat  = tf.Variable(GlorotNormal()([self.in_chan,  self.n_heads, self.d_k]), name='value_matrix')
         self.softmax    = tf.keras.layers.Softmax()
         self.dropout1   = Dropout(dropout)
         
-        self.linear_m1  = tf.Variable(GlorotNormal()([int(self.n_heads * self.d_k), self.out_chan]),name='linear_m1')
+        # self.linear_m1  = tf.Variable(GlorotNormal()([int(self.n_heads * self.d_k), self.out_chan]),name='linear_m1')
         self.dropout2   = Dropout(dropout)
+
+    def build(self, input_shape):
+        self.key_mat = self.add_weight(
+            shape = [self.in_chan,  self.n_heads, self.d_k],
+            initializer = 'glorot_normal',
+            name = 'key_matrix',
+            trainable = True
+        )
+        self.query_mat = self.add_weight(
+            shape = [self.in_chan,  self.n_heads, self.d_k],
+            initializer = 'glorot_normal',
+            name = 'query_matrix',
+            trainable = True       
+        )
+        self.value_mat = self.add_weight(
+            shape = [self.in_chan,  self.n_heads, self.d_k],
+            initializer = 'glorot_normal',
+            name = 'linear2_m',
+            trainable = True
+        )
+        self.linear_m1 = self.add_weight(
+            shape = [int(self.n_heads * self.d_k), self.out_chan],
+            initializer = 'glorot_normal',
+            name = 'linear_m1',
+            trainable = True
+        )
 
     def call(self, x, training=False):
         # calculate k, q, v, for all batches and heads
@@ -120,36 +168,65 @@ class PositionalEncoding(tf.keras.layers.Layer):
     def __init__(self, max_pos=10000):
         super().__init__()
         self.pos   = float(max_pos)
-        self.t_pos = tf.range(float(max_pos))
+        self.t_pos = tf.range(float(max_pos), dtype=tf.float32)
 
     def call(self, x):
-        C   = x.shape[2]
-        T   = x.shape[1]
+        C   = tf.cast(tf.shape(x)[2], tf.float32)
+        T   = tf.shape(x)[1]
         
         t_i = tf.range(C, dtype=tf.float32)
         val = self.t_pos[:T, None] / tf.pow(10000., (2. * t_i[None, :]) / C)
         sin_mat = tf.sin(val)
         cos_mat = tf.cos(val)
 
-        mask = tf.tile((t_i % 2 == 0)[None, :], [int(T), 1])
+        mask = tf.tile((t_i % 2 == 0)[None, :], [T, 1])
 
         pos_enc = tf.where(mask, sin_mat, cos_mat)
 
         return x + pos_enc  
 
 
-class TransformerBlock(tf.keras.layers.Layer):
-    '''from  "Attention is all you Need" (Vaswani et al., 2017)'''
+# class TransformerBlock(tf.keras.layers.Layer):
+#     '''from  "Attention is all you Need" (Vaswani et al., 2017)'''
 
-    def __init__(self, in_chan, n_heads, out_chan, dropout):
-        super().__init__()
+#     def __init__(self, in_chan, n_heads, out_chan, dropout):
+#         super().__init__()
 
-        self.att = MuliHeadedMaskedSelfAttention(in_chan, n_heads, out_chan, dropout)
-        self.ffd = FeedForward(out_chan, out_chan, dropout)
-        self.ln1 = LayerNormalization()
-        self.ln2 = LayerNormalization()
+#         self.att = MuliHeadedMaskedSelfAttention(in_chan, n_heads, out_chan, dropout)
+#         self.ffd = FeedForward(out_chan, out_chan, dropout)
+#         self.ln1 = LayerNormalization()
+#         self.ln2 = LayerNormalization()
 
-    def call(self, x, training=False):
-        x = x + self.att(self.ln1(x), training=training)
-        x = x + self.ffd(self.ln1(x), training=training)
-        return x
+#     def build(self, input_shape):
+#         # self.att.build(input_shape)
+#         # self.ffd.build(input_shape)
+#         # self.self.ln1.build(input_shape)
+#         # self.self.ln2.build(input_shape)
+#         pass
+
+
+#     def call(self, x, training=False):
+#         x = x + self.att(self.ln1(x), training=training)
+#         x = x + self.ffd(self.ln1(x), training=training)
+#         return x
+
+
+def build_gpt(n_emb, n_heads, n_blocks, n_vocab, dropout=.3):
+
+    x_in = Input([None,])
+
+    x = Embedding(n_vocab, n_emb)(x_in)
+    x = PositionalEncoding()(x)
+
+    for _ in range(n_blocks):
+        lnx = LayerNormalization()(x)
+        x   = x + MuliHeadedMaskedSelfAttention(n_emb, n_heads, n_emb, dropout)(lnx)
+
+        lnx = LayerNormalization()(x)
+        x   = x + FeedForward(n_emb, n_emb, dropout)(lnx)
+
+    x = LayerNormalization()(x)
+    x = Dense(n_vocab)(x)
+
+    return tf.keras.Model(inputs=x_in, outputs=x)
+    

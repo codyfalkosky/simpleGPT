@@ -1,20 +1,20 @@
 import tensorflow as tf
 from tensorflow.keras.layers import Dense, LayerNormalization, Softmax, Embedding
-from tensorflow.keras.losses import SparseCategoricalCrossentropy
+from tensorflow.keras.losses import sparse_categorical_crossentropy
 from tensorflow.keras.metrics import Mean
-from .custom_layers import PositionalEncoding, TransformerBlock
+from .custom_layers import build_gpt
 from IPython.display import clear_output
 import tiktoken
 import matplotlib.pyplot as plt
 
 
-class GPT(tf.keras.Model):
+class GPT:
 
     def __init__(self, n_emb, n_heads, n_blocks, dropout=.3, block_size=8, batch_size=1, valid_split=.05, tpu=False):
+        
+        self.strategy = tf.distribute.OneDeviceStrategy(device="/cpu:0")
         if tpu:
             self.start_tpu()
-        
-        super().__init__()
 
         # CONSTANTS
         self.block_size  = block_size
@@ -23,17 +23,14 @@ class GPT(tf.keras.Model):
 
         # LAYERS
         self.tokens    = tiktoken.get_encoding('gpt2')
-        self.embedding = Embedding(self.tokens.n_vocab, n_emb)
-        self.pos_emb   = PositionalEncoding()
-        self.loss_fn   = SparseCategoricalCrossentropy(from_logits=True)
-        self.transf    = [TransformerBlock(n_emb, n_heads, n_emb, dropout) for _ in range(n_blocks)]
-        self.layern    = LayerNormalization()
-        self.to_voc    = Dense(self.tokens.n_vocab)
-        self.softmax   = Softmax()
+    
+        with self.strategy.scope():
+            self.model = build_gpt(n_emb, n_heads, n_blocks, self.tokens.n_vocab, dropout)
 
         # METRICS
         self.train_loss = Mean()
         self.valid_loss = Mean()
+        
         self.history = {}
         self.history['train_loss'] = []
         self.history['valid_loss'] = []
@@ -52,7 +49,9 @@ class GPT(tf.keras.Model):
         if targets is None:
             loss   = None
         else:
-            loss   = self.loss_fn(targets, logits)
+            # loss   = self.loss_fn(targets, logits)
+            loss = sparse_categorical_crossentropy(targets, logits, from_logits=True)
+            # loss = tf.nn.compute_average_loss(loss, self.batch_size)
 
         return logits, loss
 
@@ -74,17 +73,30 @@ class GPT(tf.keras.Model):
         return idx
 
     @tf.function
-    def train_step(self, batch):
-        with tf.GradientTape() as tape:
-            logits, loss = self(batch[0], targets=batch[1], training=True)
+    def train_step(self, iterator):
 
-        gradients = tape.gradient(loss, self.trainable_variables)
-        self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
-        self.train_loss.update_state(loss)
+        def step_fn(batch):           
+            with tf.GradientTape() as tape:
+                logits = self.model(batch[0], training=True)
+                loss   = sparse_categorical_crossentropy(batch[1], logits, from_logits=True)
+                loss   = tf.nn.compute_average_loss(loss, self.batch_size)
+    
+            gradients = tape.gradient(loss, self.model.trainable_variables)
+            self.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
+            self.train_loss.update_state(loss * self.strategy.num_replicas_in_sync)
+
+        self.strategy.run(step_fn, args=(next(iterator),))
+        
     @tf.function
-    def valid_step(self, batch):
-        logits, loss = self(batch[0], targets=batch[1], training=False)
-        self.valid_loss.update_state(loss)
+    def valid_step(self, iterator):
+
+        def step_fn(batch):
+            logits = self.model(batch[0], training=False)
+            loss   = sparse_categorical_crossentropy(batch[1], logits, from_logits=True)
+            loss   = tf.nn.compute_average_loss(loss, self.batch_size)
+            self.valid_loss.update_state(loss)
+
+        self.strategy.run(step_fn, args=(next(iterator), ))
 
     def report_and_clear(self):
         self.history['train_loss'].append(self.train_loss.result().numpy())
@@ -103,7 +115,8 @@ class GPT(tf.keras.Model):
 
     def fit(self, n_epochs, dataset_path=None, optimizer=None, n_train_steps=50, n_valid_steps=10):
         if optimizer:
-            self.optimizer = optimizer
+            with self.strategy.scope():
+                self.optimizer = optimizer()
         
         if not hasattr(self, 'dataset'):
             print('building dataset')
@@ -112,12 +125,10 @@ class GPT(tf.keras.Model):
         for _ in range(n_epochs):
             
             for _ in range(n_train_steps):
-                batch = next(self.dataset['train'])
-                self.train_step(batch)
+                self.train_step(self.dataset['train'])
     
             for _ in range(n_valid_steps):
-                batch = next(self.dataset['valid'])
-                self.valid_step(batch)
+                self.valid_step(self.dataset['valid'])
     
             self.report_and_clear()
 
@@ -141,9 +152,8 @@ class GPT(tf.keras.Model):
             self.dataset[name] = self.dataset[name].cache()
             self.dataset[name] = self.dataset[name].repeat()
             self.dataset[name] = self.dataset[name].shuffle(10000)
-            self.dataset[name] = self.dataset[name].batch(self.batch_size)
-            if hasattr(self, 'strategy'):
-                self.dataset[name] = self.strategy.experimental_distribute_dataset(self.dataset[name])
+            self.dataset[name] = self.dataset[name].batch(self.batch_size // self.strategy.num_replicas_in_sync)
+            self.dataset[name] = self.strategy.experimental_distribute_dataset(self.dataset[name])
             self.dataset[name] = iter(self.dataset[name])
 
     def start_tpu(self):
