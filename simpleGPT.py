@@ -10,7 +10,10 @@ import matplotlib.pyplot as plt
 
 class GPT(tf.keras.Model):
 
-    def __init__(self, n_emb, n_heads, n_blocks, dropout=.3, block_size=8, batch_size=1, valid_split=.05):
+    def __init__(self, n_emb, n_heads, n_blocks, dropout=.3, block_size=8, batch_size=1, valid_split=.05, tpu=False):
+        if tpu:
+            self.start_tpu()
+        
         super().__init__()
 
         # CONSTANTS
@@ -140,6 +143,14 @@ class GPT(tf.keras.Model):
             self.dataset[name] = self.dataset[name].shuffle(10000)
             self.dataset[name] = self.dataset[name].batch(self.batch_size)
             self.dataset[name] = iter(self.dataset[name])
+
+    def start_tpu(self):
+        self.resolver = tf.distribute.cluster_resolver.TPUClusterResolver(tpu='')
+        tf.config.experimental_connect_to_cluster(self.resolver)
+        # This is the TPU initialization code that has to be at the beginning.
+        tf.tpu.experimental.initialize_tpu_system(self.resolver)
+        for device in tf.config.list_logical_devices('TPU'):
+            print(device)
 
 if __name__ == '__main__':
     potterGPT = GPT(8, 2, 2)
