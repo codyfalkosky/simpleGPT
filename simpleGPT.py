@@ -155,7 +155,7 @@ class GPT(tf.keras.Model):
         for device in tf.config.list_logical_devices('TPU'):
             print(device)
 
-        self.strategy = tf.distribute.TPUStrategy(resolver)
+        self.strategy = tf.distribute.TPUStrategy(self.resolver)
 
 if __name__ == '__main__':
     potterGPT = GPT(8, 2, 2)
