@@ -113,7 +113,7 @@ class GPT:
             for _ in range(n_valid_steps):
                 self.valid_step(self.dataset['valid'])
     
-            self.report_and_clear()
+            # self.report_and_clear()
 
 
     def dataset_from_path(self, path):
