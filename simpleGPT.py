@@ -59,7 +59,7 @@ class GPT:
             with tf.GradientTape() as tape:
                 logits = self.model(batch[0], training=True)
                 loss   = sparse_categorical_crossentropy(batch[1], logits, from_logits=True)
-                loss   = tf.nn.compute_average_loss(loss)
+                loss   = tf.reduce_mean(loss)
     
             gradients = tape.gradient(loss, self.model.trainable_variables)
             self.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
@@ -73,7 +73,7 @@ class GPT:
         def step_fn(batch):
             logits = self.model(batch[0], training=False)
             loss   = sparse_categorical_crossentropy(batch[1], logits, from_logits=True)
-            loss   = tf.nn.compute_average_loss(loss)
+            loss   = tf.reduce_mean(loss)
             self.valid_loss.update_state(loss)
 
         self.strategy.run(step_fn, args=(next(iterator), ))
