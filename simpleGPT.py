@@ -93,10 +93,11 @@ class GPT:
 
         
 
-    def fit(self, n_epochs, dataset_path=None, optimizer=None, n_train_steps=50, n_valid_steps=10):
+    def fit(self, n_epochs, dataset_path=None, optimizer=None, optimizer_params={},
+            n_train_steps=50, n_valid_steps=10):
         if optimizer:
             with self.strategy.scope():
-                self.optimizer = optimizer()
+                self.optimizer = optimizer(**optimizer_params)
         
         if not hasattr(self, 'dataset'):
             print('building dataset')
@@ -132,7 +133,7 @@ class GPT:
             self.dataset[name] = self.dataset[name].cache()
             self.dataset[name] = self.dataset[name].repeat()
             self.dataset[name] = self.dataset[name].shuffle(10000)
-            self.dataset[name] = self.dataset[name].batch(self.batch_size // self.strategy.num_replicas_in_sync)
+            self.dataset[name] = self.dataset[name].batch(self.batch_size)
             self.dataset[name] = self.strategy.experimental_distribute_dataset(self.dataset[name])
             self.dataset[name] = iter(self.dataset[name])
 
