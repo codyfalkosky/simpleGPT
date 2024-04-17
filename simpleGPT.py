@@ -35,26 +35,6 @@ class GPT:
         self.history['train_loss'] = []
         self.history['valid_loss'] = []
 
-    @tf.function
-    def call(self, x, targets=None, training=False):
-        x = self.embedding(x) # [B, T, vocab_size]
-        x = self.pos_emb(x)
-
-        for T in self.transf:
-            x = T(x, training=training)
-
-        x       = self.layern(x)
-        logits  = self.to_voc(x)
-        
-        if targets is None:
-            loss   = None
-        else:
-            # loss   = self.loss_fn(targets, logits)
-            loss = sparse_categorical_crossentropy(targets, logits, from_logits=True)
-            # loss = tf.nn.compute_average_loss(loss, self.batch_size)
-
-        return logits, loss
-
     def generate(self, idx, max_new_tokens=10):
 
         for _ in range(max_new_tokens):
@@ -79,11 +59,11 @@ class GPT:
             with tf.GradientTape() as tape:
                 logits = self.model(batch[0], training=True)
                 loss   = sparse_categorical_crossentropy(batch[1], logits, from_logits=True)
-                loss   = tf.nn.compute_average_loss(loss, self.batch_size)
+                loss   = tf.nn.compute_average_loss(loss)
     
             gradients = tape.gradient(loss, self.model.trainable_variables)
             self.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
-            self.train_loss.update_state(loss * self.strategy.num_replicas_in_sync)
+            self.train_loss.update_state(loss)
 
         self.strategy.run(step_fn, args=(next(iterator),))
         
@@ -93,7 +73,7 @@ class GPT:
         def step_fn(batch):
             logits = self.model(batch[0], training=False)
             loss   = sparse_categorical_crossentropy(batch[1], logits, from_logits=True)
-            loss   = tf.nn.compute_average_loss(loss, self.batch_size)
+            loss   = tf.nn.compute_average_loss(loss)
             self.valid_loss.update_state(loss)
 
         self.strategy.run(step_fn, args=(next(iterator), ))
