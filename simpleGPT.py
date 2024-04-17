@@ -27,9 +27,9 @@ class GPT:
         with self.strategy.scope():
             self.model = build_gpt(n_emb, n_heads, n_blocks, self.tokens.n_vocab, dropout)
 
-        # METRICS
-        self.train_loss = Mean()
-        self.valid_loss = Mean()
+            # METRICS
+            self.train_loss = Mean()
+            self.valid_loss = Mean()
         
         self.history = {}
         self.history['train_loss'] = []
