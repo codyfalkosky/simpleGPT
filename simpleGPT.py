@@ -134,6 +134,7 @@ class GPT:
             self.dataset[name] = self.dataset[name].repeat()
             self.dataset[name] = self.dataset[name].shuffle(10000)
             self.dataset[name] = self.dataset[name].batch(self.batch_size * self.strategy.num_replicas_in_sync)
+            self.dataset[name] = self.dataset[name].prefetch(tf.data.AUTOTUNE))
             self.dataset[name] = self.strategy.experimental_distribute_dataset(self.dataset[name])
             self.dataset[name] = iter(self.dataset[name])
 
