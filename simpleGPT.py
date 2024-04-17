@@ -145,7 +145,7 @@ class GPT(tf.keras.Model):
             self.dataset[name] = iter(self.dataset[name])
 
     def start_tpu(self):
-        self.resolver = tf.distribute.cluster_resolver.TPUClusterResolver(tpu='')
+        self.resolver = tf.distribute.cluster_resolver.TPUClusterResolver()
         tf.config.experimental_connect_to_cluster(self.resolver)
         # This is the TPU initialization code that has to be at the beginning.
         tf.tpu.experimental.initialize_tpu_system(self.resolver)
