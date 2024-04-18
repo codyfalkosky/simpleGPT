@@ -79,19 +79,19 @@ class GPT:
         self.strategy.run(step_fn, args=(next(iterator), ))
 
     def report_and_clear(self):
-        # self.history['train_loss'].append(self.train_loss.result().numpy())
-        # self.history['valid_loss'].append(self.valid_loss.result().numpy())
+        self.history['train_loss'].append(self.train_loss.result().numpy())
+        self.history['valid_loss'].append(self.valid_loss.result().numpy())
 
         print(f'{self.train_loss.result().numpy()}, {self.valid_loss.result().numpy()}')
 
         self.train_loss.reset_state()
         self.valid_loss.reset_state()
 
-        # clear_output(wait=True)
-        # plt.figure(figsize=(10, 5))
-        # plt.plot(self.history['train_loss'])
-        # plt.plot(self.history['valid_loss'])
-        # plt.show()
+        clear_output(wait=True)
+        plt.figure(figsize=(10, 5))
+        plt.plot(self.history['train_loss'])
+        plt.plot(self.history['valid_loss'])
+        plt.show()
 
         
 
@@ -113,7 +113,7 @@ class GPT:
             for _ in range(n_valid_steps):
                 self.valid_step(self.dataset['valid'])
     
-            # self.report_and_clear()
+            self.report_and_clear()
 
 
     def dataset_from_path(self, path):
