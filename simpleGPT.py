@@ -168,11 +168,11 @@ class GPT:
             for _ in range(n_valid_steps):
                 self.valid_multiple_steps(self.dataset['valid'], n_steps_fused)
             
-            # if self.log_dir:
-            #     self.save_metrics_and_clear()
+            if self.log_dir:
+                self.save_metrics_and_clear()
 
-            # if self.log_dir and not self.saved_params:
-            #     self.save_params()
+            if self.log_dir and not self.saved_params:
+                self.save_params()
 
 
     def dataset_from_path(self, path):
