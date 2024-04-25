@@ -119,14 +119,12 @@ class GPT:
         return idx
 
     def save_metrics_and_clear(self):
-        # record train metrics
-        step = self.optimizer.iterations.numpy()
         
         with self.train_summary_writer.as_default():
-            tf.summary.scalar('loss', self.train_metric.result(), step=step)
+            tf.summary.scalar('loss',     self.train_metric.result(), step=self.epoch*self.batch_size*self.block_size)
 
         with self.valid_summary_writer.as_default():
-            tf.summary.scalar('val loss', self.valid_metric.result(), step=step)
+            tf.summary.scalar('val loss', self.valid_metric.result(), step=self.epoch*self.batch_size*self.block_size)
 
         self.train_metric.reset_state()
         self.valid_metric.reset_state()
@@ -171,13 +169,13 @@ class GPT:
             for _ in range(n_valid_steps):
                 self.valid_multiple_steps(self.dataset['valid'], n_steps_fused)
             
-            # if self.log_dir:
-            #     self.save_metrics_and_clear()
+            if self.log_dir:
+                self.save_metrics_and_clear()
 
-            # if self.log_dir and not self.saved_params:
-            #     self.save_params()
+            if self.log_dir and not self.saved_params:
+                self.save_params()
 
-            # self.epoch += 1
+            self.epoch += 1
 
 
     def dataset_from_path(self, path):
