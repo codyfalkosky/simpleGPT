@@ -59,45 +59,29 @@ class GPT:
         self.saved_params = False
 
 
-    @tf.function
-    def train_multiple_steps(self, iterator, steps):
-        'step function for one training step'
-        print('TRACING: train function')
 
-        @tf.function(jit_compile=True)
-        def step_fn(batch):
-            x      = batch[0]
-            y_true = batch[1]
-            with tf.GradientTape() as tape:
-                y_pred = self.model(x, training=True)
-                loss   = self.loss(y_true, y_pred)
-                loss   = tf.nn.compute_average_loss(loss, global_batch_size=self.batch_size*self.block_size)
-
-            grads = tape.gradient(loss, self.model.trainable_variables)
-            self.optimizer.apply_gradients(list(zip(grads, self.model.trainable_variables)))
-            self.train_metric.update_state(loss * self.strategy.num_replicas_in_sync)
-
-        for _ in tf.range(steps):
-            self.strategy.run(step_fn, args=(next(iterator),))           
-
-    @tf.function
-    def valid_multiple_steps(self, iterator, steps):
-        'step function for one training step'
-        print('TRACING: valid function')
-
-        @tf.function(jit_compile=True)
-        def step_fn(batch):
-            x      = batch[0]
-            y_true = batch[1]
-            
-            y_pred = self.model(x, training=False)
+    @tf.function(jit_compile=True)
+    def train_step_fn(self, x, y_true):
+        print('TRACING: train_step_fn')
+        with tf.GradientTape() as tape:
+            y_pred = self.model(x, training=True)
             loss   = self.loss(y_true, y_pred)
             loss   = tf.nn.compute_average_loss(loss, global_batch_size=self.batch_size*self.block_size)
 
-            self.valid_metric.update_state(loss * self.strategy.num_replicas_in_sync)
+        grads = tape.gradient(loss, self.model.trainable_variables)
+        self.optimizer.apply_gradients(list(zip(grads, self.model.trainable_variables)))
+        self.train_metric.update_state(loss * self.strategy.num_replicas_in_sync)
+           
 
-        for _ in tf.range(steps):
-            self.strategy.run(step_fn, args=(next(iterator),))
+
+    @tf.function(jit_compile=True)
+    def valid_step_fn(self, x, y_true):
+        print('TRACING: valid_step_fn')
+        y_pred = self.model(x, training=False)
+        loss   = self.loss(y_true, y_pred)
+        loss   = tf.nn.compute_average_loss(loss, global_batch_size=self.batch_size*self.block_size)
+
+        self.valid_metric.update_state(loss * self.strategy.num_replicas_in_sync)
 
     def generate(self, idx, max_new_tokens=10):
 
@@ -148,10 +132,9 @@ class GPT:
             
             
 
-    def fit(self, n_epochs, n_steps_fused=1, dataset_path=None, optimizer=None, optimizer_params={},
+    def fit(self, n_epochs, dataset_path=None, optimizer=None, optimizer_params={},
             n_train_steps=50, n_valid_steps=10):
 
-        self.n_steps_fused = n_steps_fused
         
         if optimizer:
             # with self.strategy.scope():
@@ -164,18 +147,18 @@ class GPT:
         for _ in range(n_epochs):
             
             for _ in range(n_train_steps):
-                self.train_multiple_steps(self.dataset['train'], n_steps_fused)
+                b = next(self.dataset['train'])
+                self.strategy.run(self.train_step_fn, args=(b[0], b[1],))
     
             for _ in range(n_valid_steps):
-                self.valid_multiple_steps(self.dataset['valid'], n_steps_fused)
+                b = next(self.dataset['valid'])
+                self.strategy.run(self.valid_step_fn, args=(b[0], b[1],))
             
             if self.log_dir:
                 self.save_metrics_and_clear()
 
             if self.log_dir and not self.saved_params:
                 self.save_params()
-
-            self.epoch += 1
 
 
     def dataset_from_path(self, path):
@@ -192,7 +175,7 @@ class GPT:
         for name, (start, end) in zip(['train', 'valid'],[[None, -split], [-split, None]]):
             self.dataset[name] = tf.data.Dataset.from_tensor_slices(tf.convert_to_tensor(tokens[start:end]))\
                                     .window(size=self.block_size+1, shift=1)\
-                                    .flat_map(lambda x: x.batch(self.block_size+1))\
+                                    .flat_map(lambda x: x.batch(self.block_size+1, drop_remainder=True))\
                                     .map(lambda x: (x[:-1], x[1:]))\
                                     .repeat()\
                                     .shuffle(10000)\
