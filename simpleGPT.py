@@ -57,11 +57,15 @@ class GPT:
             self.valid_summary_writer = tf.summary.create_file_writer(valid_log_dir)
 
         self.saved_params = False
+        
+        self.input_spec    = tf.TensorSpec([self.batch_size, self.block_size], tf.int32)
+        self.train_step_fn = tf.function(self._train_step_fn, input_signature=(self.input_spec, self.input_spec), jit_compile=True)
+        self.valid_step_fn = tf.function(self._valid_step_fn, input_signature=(self.input_spec, self.input_spec), jit_compile=True)
 
 
 
-    @tf.function(jit_compile=True)
-    def train_step_fn(self, x, y_true):
+    # @tf.function(jit_compile=True)
+    def _train_step_fn(self, x, y_true):
         print('TRACING: train_step_fn')
         with tf.GradientTape() as tape:
             y_pred = self.model(x, training=True)
@@ -74,8 +78,8 @@ class GPT:
            
 
 
-    @tf.function(jit_compile=True)
-    def valid_step_fn(self, x, y_true):
+    # @tf.function(jit_compile=True)
+    def _valid_step_fn(self, x, y_true):
         print('TRACING: valid_step_fn')
         y_pred = self.model(x, training=False)
         loss   = self.loss(y_true, y_pred)
