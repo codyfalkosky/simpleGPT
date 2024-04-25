@@ -41,7 +41,7 @@ class GPT:
     
         with self.strategy.scope():
             self.model = GPTModel(n_emb, n_heads, n_blocks, self.tokens.n_vocab, dropout)
-            self.loss  = tf.keras.losses.SparseCategoricalCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
+            self.loss  = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, reduction=tf.keras.losses.Reduction.NONE)
 
             self.train_metric = tf.keras.metrics.Mean()
             self.valid_metric = tf.keras.metrics.Mean()
@@ -53,8 +53,9 @@ class GPT:
             while os.path.exists(log_dir + '/' + current_day + f'_run_{run}'):
                 run += 1
             
-            train_log_dir = log_dir + '/' + current_day + f'_run_{run}' + '/train'
-            valid_log_dir = log_dir + '/' + current_day + f'_run_{run}' + '/valid'
+            self.save_root = log_dir + '/' + current_day + f'_run_{run}'
+            train_log_dir = self.save_root + '/train'
+            valid_log_dir = self.save_root + '/valid'
             self.train_summary_writer = tf.summary.create_file_writer(train_log_dir)
             self.valid_summary_writer = tf.summary.create_file_writer(valid_log_dir)
 

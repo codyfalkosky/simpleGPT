@@ -312,7 +312,7 @@ class GPTModel(tf.keras.models.Model):
         self.transformers = [TransformerBlock(n_heads, dropout, name=f'T{i}') for i in range(n_blocks)]
 
         self.ln = LayerNormalization(name='ln_out')
-        self.voc = Dense(n_vocab, name='voc')
+        self.voc = Dense(n_vocab, name='voc', dtype=tf.float32)
 
     def build(self, input_shape):
         super().build(input_shape)
