@@ -1,2 +1,5 @@
 .ipynb_checkpoints/
 test/
+.DS_Store
+__pycache__/
+logs/

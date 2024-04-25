@@ -2,38 +2,102 @@ import tensorflow as tf
 from tensorflow.keras.layers import Dense, LayerNormalization, Softmax, Embedding
 from tensorflow.keras.losses import sparse_categorical_crossentropy
 from tensorflow.keras.metrics import Mean
-from .custom_layers import build_gpt
+from .custom_layers import GPTModel
 from IPython.display import clear_output
 import tiktoken
 import matplotlib.pyplot as plt
+import datetime
+import os
 
 
 class GPT:
+    'Container for GPT, training, initalization, saving and loading'
 
-    def __init__(self, n_emb, n_heads, n_blocks, dropout=.3, block_size=8, batch_size=1, valid_split=.05, tpu=False):
+    def __init__(self, n_emb, n_heads, n_blocks, log_dir=None, dropout=.3, block_size=8, batch_size=1, valid_split=.05, tpu=False, mixed_precision=None):
+        if mixed_precision == 'f16':
+            tf.keras.mixed_precision.set_global_policy('mixed_float16')        
+        elif mixed_precision == 'b16':
+            tf.keras.mixed_precision.set_global_policy('bfloat_float16')
+         
+        self.strategy = tf.distribute.get_strategy()
         
-        # self.strategy = tf.distribute.OneDeviceStrategy(device="/cpu:0")
         if tpu:
             self.start_tpu()
 
         # CONSTANTS
+        self.n_emb    = n_emb
+        self.n_heads  = n_heads
+        self.n_blocks = n_blocks
+        
         self.block_size  = block_size
         self.batch_size  = batch_size
         self.valid_split = valid_split
+        self.log_dir     = log_dir
 
-        # LAYERS
-        self.tokens    = tiktoken.get_encoding('gpt2')
+        # TOKENIZER
+        self.tokens = tiktoken.get_encoding('gpt2')
     
-        # with self.strategy.scope():
-        self.model = build_gpt(n_emb, n_heads, n_blocks, self.tokens.n_vocab, dropout)
+        with self.strategy.scope():
+            self.model = GPTModel(n_emb, n_heads, n_blocks, self.tokens.n_vocab, dropout)
+            self.loss  = tf.keras.losses.SparseCategoricalCrossentropy(reduction=tf.keras.losses.Reduction.NONE)
 
-        # METRICS
-        self.train_loss = Mean()
-        self.valid_loss = Mean()
-        
-        self.history = {}
-        self.history['train_loss'] = []
-        self.history['valid_loss'] = []
+            self.train_metric = tf.keras.metrics.Mean()
+            self.valid_metric = tf.keras.metrics.Mean()
+
+        # tensorboard
+        if log_dir:
+            current_day = datetime.datetime.now().strftime('%m%d')
+            run = 1
+            while os.path.exists(log_dir + '/' + current_day + f'_run_{run}'):
+                run += 1
+            
+            train_log_dir = log_dir + '/' + current_day + f'_run_{run}' + '/train'
+            valid_log_dir = log_dir + '/' + current_day + f'_run_{run}' + '/valid'
+            self.train_summary_writer = tf.summary.create_file_writer(train_log_dir)
+            self.valid_summary_writer = tf.summary.create_file_writer(valid_log_dir)
+
+        self.saved_params = False
+
+
+    @tf.function
+    def train_multiple_steps(self, iterator, steps):
+        'step function for one training step'
+        print('TRACING: train function')
+
+        @tf.function(jit_compile=True)
+        def step_fn(batch):
+            x      = batch[0]
+            y_true = batch[1]
+            with tf.GradientTape() as tape:
+                y_pred = self.model(x, training=True)
+                loss   = self.loss(y_true, y_pred)
+                loss   = tf.nn.compute_average_loss(loss, global_batch_size=self.batch_size*self.block_size)
+
+            grads = tape.gradient(loss, self.model.trainable_variables)
+            self.optimizer.apply_gradients(list(zip(grads, self.model.trainable_variables)))
+            self.train_metric.update_state(loss * self.strategy.num_replicas_in_sync)
+
+        for _ in tf.range(steps):
+            self.strategy.run(step_fn, args=(next(iterator),))           
+
+    @tf.function
+    def valid_multiple_steps(self, iterator, steps):
+        'step function for one training step'
+        print('TRACING: valid function')
+
+        @tf.function(jit_compile=True)
+        def step_fn(batch):
+            x      = batch[0]
+            y_true = batch[1]
+            
+            y_pred = self.model(x, training=False)
+            loss   = self.loss(y_true, y_pred)
+            loss   = tf.nn.compute_average_loss(loss, global_batch_size=self.batch_size*self.block_size)
+
+            self.valid_metric.update_state(loss * self.strategy.num_replicas_in_sync)
+
+        for _ in tf.range(steps):
+            self.strategy.run(step_fn, args=(next(iterator),))
 
     def generate(self, idx, max_new_tokens=10):
 
@@ -52,51 +116,42 @@ class GPT:
     
         return idx
 
-    @tf.function
-    def train_step(self, batch):
+    def save_metrics_and_clear(self):
+        # record train metrics
+        step = self.optimizer.iterations.value
+        with self.train_summary_writer.as_default():
+            tf.summary.scalar('loss', self.train_metric.result(), step=step)
 
-        # def step_fn(batch):           
-        with tf.GradientTape() as tape:
-            logits = self.model(batch[0], training=True)
-            loss   = sparse_categorical_crossentropy(batch[1], logits, from_logits=True)
-            loss   = tf.reduce_mean(loss)
+        with self.valid_summary_writer.as_default():
+            tf.summary.scalar('val loss', self.valid_metric.result(), step=step)
 
-        gradients = tape.gradient(loss, self.model.trainable_variables)
-        self.optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
-        self.train_loss.update_state(loss)
+        self.train_metric.reset_state()
+        self.valid_metric.reset_state()
 
-        # self.strategy.run(step_fn, args=(next(iterator),))
+    def save_params(self):
+        params = {}
+        params['n_emb']      = self.n_emb
+        params['n_heads']    = self.n_heads
+        params['n_blocks']   = self.n_blocks
+        params['block_size'] = self.block_size
+        params['batch_size'] = self.batch_size
+        params['n_steps_fused'] = self.n_steps_fused
+        params['optimizer']  = self.optimizer.get_config()
+
+        params = str(params)
         
-    @tf.function
-    def valid_step(self, batch):
+        with self.train_summary_writer.as_default():
+            tf.summary.text('params', params, step=0)
 
-        # def step_fn(batch):
-        logits = self.model(batch[0], training=False)
-        loss   = sparse_categorical_crossentropy(batch[1], logits, from_logits=True)
-        loss   = tf.reduce_mean(loss)
-        self.valid_loss.update_state(loss)
+        self.saved_params = True
+            
+            
 
-        # self.strategy.run(step_fn, args=(next(iterator), ))
-
-    def report_and_clear(self):
-        self.history['train_loss'].append(self.train_loss.result().numpy())
-        self.history['valid_loss'].append(self.valid_loss.result().numpy())
-
-        print(f'{self.train_loss.result().numpy()}, {self.valid_loss.result().numpy()}')
-
-        self.train_loss.reset_state()
-        self.valid_loss.reset_state()
-
-        clear_output(wait=True)
-        plt.figure(figsize=(10, 5))
-        plt.plot(self.history['train_loss'])
-        plt.plot(self.history['valid_loss'])
-        plt.show()
-
-        
-
-    def fit(self, n_epochs, dataset_path=None, optimizer=None, optimizer_params={},
+    def fit(self, n_epochs, n_steps_fused=1, dataset_path=None, optimizer=None, optimizer_params={},
             n_train_steps=50, n_valid_steps=10):
+
+        self.n_steps_fused = n_steps_fused
+        
         if optimizer:
             # with self.strategy.scope():
             self.optimizer = optimizer(**optimizer_params)
@@ -108,12 +163,16 @@ class GPT:
         for _ in range(n_epochs):
             
             for _ in range(n_train_steps):
-                self.train_step(next(self.dataset['train']))
+                self.train_multiple_steps(self.dataset['train'], n_steps_fused)
     
             for _ in range(n_valid_steps):
-                self.valid_step(next(self.dataset['valid']))
-    
-            self.report_and_clear()
+                self.valid_multiple_steps(self.dataset['valid'], n_steps_fused)
+            
+            if self.log_dir:
+                self.save_metrics_and_clear()
+
+            if self.log_dir and not self.saved_params:
+                self.save_params()
 
 
     def dataset_from_path(self, path):
@@ -128,16 +187,16 @@ class GPT:
         self.dataset = {}
 
         for name, (start, end) in zip(['train', 'valid'],[[None, -split], [-split, None]]):
-            self.dataset[name] = tf.data.Dataset.from_tensor_slices(tokens[start:end])
-            self.dataset[name] = self.dataset[name].window(size=self.block_size+1, shift=1)
-            self.dataset[name] = self.dataset[name].flat_map(lambda x: x.batch(self.block_size+1))
-            self.dataset[name] = self.dataset[name].map(lambda x: (x[:-1], x[1:]))
-            self.dataset[name] = self.dataset[name].cache()
-            self.dataset[name] = self.dataset[name].repeat()
-            self.dataset[name] = self.dataset[name].shuffle(10000)
-            self.dataset[name] = self.dataset[name].batch(self.batch_size) # * self.strategy.num_replicas_in_sync)
-            self.dataset[name] = self.dataset[name].prefetch(tf.data.AUTOTUNE)
-            # self.dataset[name] = self.strategy.experimental_distribute_dataset(self.dataset[name])
+            self.dataset[name] = tf.data.Dataset.from_tensor_slices(tf.convert_to_tensor(tokens[start:end]))\
+                                    .window(size=self.block_size+1, shift=1)\
+                                    .flat_map(lambda x: x.batch(self.block_size+1))\
+                                    .map(lambda x: (x[:-1], x[1:]))\
+                                    .repeat()\
+                                    .shuffle(10000)\
+                                    .batch(self.batch_size)\
+                                    .prefetch(tf.data.AUTOTUNE)
+            
+            self.dataset[name] = self.strategy.experimental_distribute_dataset(self.dataset[name])
             self.dataset[name] = iter(self.dataset[name])
 
     def start_tpu(self):
