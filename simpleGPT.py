@@ -17,7 +17,7 @@ class GPT:
         if mixed_precision == 'f16':
             tf.keras.mixed_precision.set_global_policy('mixed_float16')        
         elif mixed_precision == 'b16':
-            tf.keras.mixed_precision.set_global_policy('bfloat_float16')
+            tf.keras.mixed_precision.set_global_policy('mixed_bfloat16')
          
         self.strategy = tf.distribute.get_strategy()
         
