@@ -118,7 +118,8 @@ class GPT:
 
     def save_metrics_and_clear(self):
         # record train metrics
-        step = self.optimizer.iterations.value
+        step = self.optimizer.iterations.numpy()
+        
         with self.train_summary_writer.as_default():
             tf.summary.scalar('loss', self.train_metric.result(), step=step)
 
