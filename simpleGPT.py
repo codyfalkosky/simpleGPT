@@ -126,7 +126,6 @@ class GPT:
         params['n_blocks']   = self.n_blocks
         params['block_size'] = self.block_size
         params['batch_size'] = self.batch_size
-        params['n_steps_fused'] = self.n_steps_fused
         params['optimizer']  = self.optimizer.get_config()
 
         params = str(params)
