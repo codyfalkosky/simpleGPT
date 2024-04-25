@@ -58,6 +58,8 @@ class GPT:
 
         self.saved_params = False
 
+        self.epoch = 0
+
 
     @tf.function
     def train_multiple_steps(self, iterator, steps):
@@ -169,11 +171,13 @@ class GPT:
             for _ in range(n_valid_steps):
                 self.valid_multiple_steps(self.dataset['valid'], n_steps_fused)
             
-            if self.log_dir:
-                self.save_metrics_and_clear()
+            # if self.log_dir:
+            #     self.save_metrics_and_clear()
 
-            if self.log_dir and not self.saved_params:
-                self.save_params()
+            # if self.log_dir and not self.saved_params:
+            #     self.save_params()
+
+            # self.epoch += 1
 
 
     def dataset_from_path(self, path):
