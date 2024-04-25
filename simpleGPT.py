@@ -58,8 +58,6 @@ class GPT:
 
         self.saved_params = False
 
-        self.epoch = 0
-
 
     @tf.function
     def train_multiple_steps(self, iterator, steps):
@@ -119,12 +117,14 @@ class GPT:
         return idx
 
     def save_metrics_and_clear(self):
+        # record train metrics
+        step = self.optimizer.iterations.numpy()
         
         with self.train_summary_writer.as_default():
-            tf.summary.scalar('loss',     self.train_metric.result(), step=self.epoch*self.batch_size*self.block_size)
+            tf.summary.scalar('loss', self.train_metric.result(), step=step)
 
         with self.valid_summary_writer.as_default():
-            tf.summary.scalar('val loss', self.valid_metric.result(), step=self.epoch*self.batch_size*self.block_size)
+            tf.summary.scalar('val loss', self.valid_metric.result(), step=step)
 
         self.train_metric.reset_state()
         self.valid_metric.reset_state()
