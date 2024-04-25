@@ -34,6 +34,8 @@ class GPT:
         self.valid_split = valid_split
         self.log_dir     = log_dir
 
+        assert self.batch_size % self.strategy.num_replicas_in_sync == 0, 'batch_size should be a multiple of num_replicas_in_sync'
+
         # TOKENIZER
         self.tokens = tiktoken.get_encoding('gpt2')
     
@@ -58,7 +60,7 @@ class GPT:
 
         self.saved_params = False
         
-        self.input_spec    = tf.TensorSpec([self.batch_size, self.block_size], tf.int32)
+        self.input_spec    = tf.TensorSpec([self.batch_size // self.strategy.num_replicas_in_sync, self.block_size], tf.int32)
         self.train_step_fn = tf.function(self._train_step_fn, input_signature=(self.input_spec, self.input_spec), jit_compile=True)
         self.valid_step_fn = tf.function(self._valid_step_fn, input_signature=(self.input_spec, self.input_spec), jit_compile=True)
 
