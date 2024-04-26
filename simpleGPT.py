@@ -10,6 +10,7 @@ import datetime
 import os
 
 
+# +
 class GPT:
     'Container for GPT, training, initalization, saving and loading'
 
@@ -192,15 +193,22 @@ class GPT:
             self.dataset[name] = iter(self.dataset[name])
 
     def start_tpu(self):
-        self.resolver = tf.distribute.cluster_resolver.TPUClusterResolver()
-        tf.config.experimental_connect_to_cluster(self.resolver)
+        self.tpu = tf.distribute.cluster_resolver.TPUClusterResolver()
+        tf.config.experimental_connect_to_cluster(self.tpu)
         # This is the TPU initialization code that has to be at the beginning.
-        tf.tpu.experimental.initialize_tpu_system(self.resolver)
+        tf.tpu.experimental.initialize_tpu_system(self.tpu)
         print('TPUs available:')
         for device in tf.config.list_logical_devices('TPU'):
             print(device)
 
-        self.strategy = tf.distribute.TPUStrategy(self.resolver)
+        # set strategy
+        self.strategy = tf.distribute.TPUStrategy(self.tpu)
+
+        self.service_addr = self.tpu.get_master().replace(':8470', ':8466')
+        print(f'TPU Profile Address: {self.service_addr}'
+
+        
+# -
 
 if __name__ == '__main__':
     potterGPT = GPT(8, 2, 2)
