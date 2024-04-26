@@ -193,7 +193,7 @@ class GPT:
             self.dataset[name] = iter(self.dataset[name])
 
     def start_tpu(self):
-        self.tpu = tf.distribute.cluster_resolver.TPUClusterResolver()
+        self.tpu = tf.distribute.cluster_resolver.TPUClusterResolver('local')
         tf.config.experimental_connect_to_cluster(self.tpu)
         # This is the TPU initialization code that has to be at the beginning.
         tf.tpu.experimental.initialize_tpu_system(self.tpu)
