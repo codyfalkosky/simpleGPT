@@ -205,7 +205,7 @@ class GPT:
         self.strategy = tf.distribute.TPUStrategy(self.tpu)
 
         self.service_addr = self.tpu.get_master().replace(':8470', ':8466')
-        print(f'TPU Profile Address: {self.service_addr}'
+        print(f'TPU Profile Address: {self.service_addr}')
 
         
 # -
