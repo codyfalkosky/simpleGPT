@@ -24,6 +24,7 @@ class GPT:
         self.strategy = tf.distribute.get_strategy()
         
         if tpu:
+            print('Initializing TPUs')
             self.start_tpu()
 
         # CONSTANTS
