@@ -15,7 +15,7 @@ class GPT:
     'Container for GPT, training, initalization, saving and loading'
 
     def __init__(self, n_emb, n_heads, n_blocks, log_dir=None, dropout=.3, block_size=8, batch_size=1, valid_split=.05,
-                 tpu=False, mixed_precision=None, sp_model_path):
+                 tpu=False, mixed_precision=None, sp_model_path=''):
         if mixed_precision == 'f16':
             tf.keras.mixed_precision.set_global_policy('mixed_float16')        
         elif mixed_precision == 'b16':
