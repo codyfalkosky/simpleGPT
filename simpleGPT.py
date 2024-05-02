@@ -15,7 +15,7 @@ class GPT:
     'Container for GPT, training, initalization, saving and loading'
 
     def __init__(self, n_emb, n_heads, n_blocks, log_dir=None, dropout=.3, block_size=8, batch_size=1, valid_split=.05,
-                 tpu=False, mixed_precision=None, sp_model_path=''):
+                 tpu=False, mixed_precision=None, sp_model_path='', run=1):
         if mixed_precision == 'f16':
             tf.keras.mixed_precision.set_global_policy('mixed_float16')        
         elif mixed_precision == 'b16':
@@ -43,6 +43,7 @@ class GPT:
         # self.tokens = tiktoken.get_encoding('gpt2')
         self.tokens = spm.SentencePieceProcessor()
         self.tokens.load(sp_model_path)
+        self.sp_model_path = sp_model_path
     
         with self.strategy.scope():
             self.model = GPTModel(n_emb, n_heads, n_blocks, self.tokens.vocab_size(), dropout)
@@ -54,9 +55,9 @@ class GPT:
         # tensorboard
         if log_dir:
             current_day = datetime.datetime.now().strftime('%m%d')
-            run = 1
-            while os.path.exists(log_dir + '/' + current_day + f'_run_{run}'):
-                run += 1
+            # run = 1
+            # while os.path.exists(log_dir + '/' + current_day + f'_run_{run}'):
+            #     run += 1
             
             self.save_root = log_dir + '/' + current_day + f'_run_{run}'
             train_log_dir = self.save_root + '/train'
@@ -132,6 +133,7 @@ class GPT:
         params['n_blocks']   = self.n_blocks
         params['block_size'] = self.block_size
         params['batch_size'] = self.batch_size
+        params['sp_model_path'] = self.sp_model_path
         params['optimizer']  = self.optimizer.get_config()
 
         params = str(params)
@@ -148,8 +150,8 @@ class GPT:
 
         
         if optimizer:
-            # with self.strategy.scope():
-            self.optimizer = optimizer(**optimizer_params)
+            with self.strategy.scope():
+                self.optimizer = optimizer(**optimizer_params)
         
         if not hasattr(self, 'dataset'):
             print('building dataset')
