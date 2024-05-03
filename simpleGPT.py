@@ -8,6 +8,7 @@ from IPython.display import clear_output
 import sentencepiece as spm
 import matplotlib.pyplot as plt
 import datetime
+import time
 import os
 
 
@@ -201,11 +202,14 @@ class GPT:
     def start_tpu(self):
         self.tpu = tf.distribute.cluster_resolver.TPUClusterResolver()
         print('cluster resolved')
+        time.sleep(1)
         tf.config.experimental_connect_to_cluster(self.tpu)
         print('cluster connected')
+        time.sleep(1)
         # This is the TPU initialization code that has to be at the beginning.
         tf.tpu.experimental.initialize_tpu_system(self.tpu)
         print('tpus initialized')
+        time.sleep(1)
         
         print('TPUs available:')
         for device in tf.config.list_logical_devices('TPU'):
