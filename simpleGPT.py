@@ -97,11 +97,17 @@ class GPT:
 
         self.valid_metric.update_state(loss * self.strategy.num_replicas_in_sync)
 
-    def generate(self, idx, max_new_tokens=10):
+    def complete(self, input_txt, max_new_tokens=10):
+
+        tokens = self.tokens.encode(input_txt)
+        tokens = tokens[-self.block_size:]
+        tokens = tf.convert_to_tensor(tokens)
+        tokens = tf.expand_dims(tokens, 0)
 
         for _ in range(max_new_tokens):
+            tokens = tokens[:, -self.block_size:]
             # predictions
-            logits, loss = self(idx)
+            logits = self.model(tokens, training=False)
     
             # get the new word predictions
             logits = logits[:, -1, :] # [B, C]
@@ -110,9 +116,11 @@ class GPT:
             new_word = tf.random.categorical(logits, 1, dtype=tf.int32) # [B, 1]
     
             # append to sentence
-            idx = tf.concat([idx, new_word], axis=-1) # [B, T+1]
+            tokens = tf.concat([tokens, new_word], axis=-1) # [B, T+1]
+
+        output_txt = self.tokens.decode(tokens[0].numpy().tolist())
     
-        return idx
+        return output_txt
 
     def save_metrics_and_clear(self):
         # record train metrics
