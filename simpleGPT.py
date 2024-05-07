@@ -3,10 +3,8 @@ from tensorflow.keras.layers import Dense, LayerNormalization, Softmax, Embeddin
 from tensorflow.keras.losses import sparse_categorical_crossentropy
 from tensorflow.keras.metrics import Mean
 from .custom_layers import GPTModel
-# from IPython.display import clear_output
 # import tiktoken
 import sentencepiece as spm
-import matplotlib.pyplot as plt
 import datetime
 import time
 import os
