@@ -167,9 +167,6 @@ class GPT:
 
         if not hasattr(self, 'checkpoint') and ckpt_path:
             today = datetime.datetime.now().strftime('%m%d')
-            if not os.path.exists(ckpt_path +'/' + today + f'_{self.run}'):
-                os.mkdir(ckpt_path +'/' + today + f'_{self.run}')
-            
             self.checkpoint = tf.train.Checkpoint(model=self.model, optimizer=self.optimizer)
             self.ckpt_path  = ckpt_path +'/' + today + f'_{self.run}/ckpt'
             self.ckpt_every = ckpt_every
