@@ -35,6 +35,7 @@ class GPT:
         self.batch_size  = batch_size
         self.valid_split = valid_split
         self.log_dir     = log_dir
+        self.run         = run
 
         assert self.batch_size % self.strategy.num_replicas_in_sync == 0, 'batch_size should be a multiple of num_replicas_in_sync'
 
@@ -72,7 +73,7 @@ class GPT:
 
 
 
-    # @tf.function(jit_compile=True)
+    # @tf.function(jit_compile=True) called in __init__ with dynamic input_signature
     def _train_step_fn(self, x, y_true):
         print('TRACING: train_step_fn')
         with tf.GradientTape() as tape:
@@ -86,7 +87,7 @@ class GPT:
            
 
 
-    # @tf.function(jit_compile=True)
+    # @tf.function(jit_compile=True) called in __init__ with dynamic input_signature
     def _valid_step_fn(self, x, y_true):
         print('TRACING: valid_step_fn')
         y_pred = self.model(x, training=False)
@@ -153,7 +154,7 @@ class GPT:
             
 
     def fit(self, n_epochs, dataset_path=None, optimizer=None, optimizer_params={},
-            n_train_steps=50, n_valid_steps=10):
+            n_train_steps=50, n_valid_steps=10, ckpt_path=None, ckpt_every=None):
 
         
         if optimizer:
@@ -164,7 +165,17 @@ class GPT:
             print('building dataset')
             self.dataset_from_path(dataset_path)
 
-        for _ in range(n_epochs):
+        if not hasattr(self, 'checkpoint') and ckpt_path:
+            today = datetime.datetime.now().strftime('%m%d')
+            if not os.path.exists(ckpt_path +'/' + today + f'_{self.run}'):
+                os.mkdir(ckpt_path +'/' + today + f'_{self.run}')
+            
+            self.checkpoint = tf.train.Checkpoint(model=self.model, optimizer=self.optimizer)
+            self.ckpt_path  = ckpt_path +'/' + today + f'_{self.run}/ckpt'
+            self.ckpt_every = ckpt_every
+            
+            
+        for epoch in range(n_epochs):
             
             for _ in range(n_train_steps):
                 b = next(self.dataset['train'])
@@ -179,6 +190,10 @@ class GPT:
 
             if self.log_dir and not self.saved_params:
                 self.save_params()
+
+            if hasattr(self, 'checkpoint'):
+                if epoch % self.ckpt_every == 0:
+                    self.checkpoint.save(self.ckpt_path)
 
 
     def dataset_from_path(self, path):
@@ -229,14 +244,16 @@ class GPT:
         print(f'TPU Profile Address: {self.service_addr}')
 
 if __name__ == '__main__':
-    potterGPT = GPT(8, 2, 2)
+    potterGPT = GPT(8, 2, 2, sp_model_path='/Users/codyfalkosky/Documents/hidden_desktop/simpleGPT/data/potter.model')
 
     fit_params = dict(
         n_epochs=10, 
         dataset_path='/Users/codyfalkosky/Documents/hidden_desktop/potterGPT/data/corpus.txt', 
         optimizer=tf.keras.optimizers.legacy.Adam(), 
         n_train_steps=100,
-        n_valid_steps=10
+        n_valid_steps=10,
+        ckpt_path='/Users/codyfalkosky/Desktop/checkpoints',
+        ckpt_every=1
     )
     
     potterGPT.fit(**fit_params)
