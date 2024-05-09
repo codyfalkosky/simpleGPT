@@ -156,6 +156,8 @@ class GPT:
     def fit(self, n_epochs, dataset_path=None, optimizer=None, optimizer_params={},
             n_train_steps=50, n_valid_steps=10, ckpt_path=None, ckpt_every=None):
 
+        self.n_valid_steps = n_valid_steps
+
         
         if optimizer:
             with self.strategy.scope():
@@ -177,7 +179,7 @@ class GPT:
             for _ in range(n_train_steps):
                 b = next(self.dataset['train'])
                 self.strategy.run(self.train_step_fn, args=(b[0], b[1],))
-    
+
             for _ in range(n_valid_steps):
                 b = next(self.dataset['valid'])
                 self.strategy.run(self.valid_step_fn, args=(b[0], b[1],))
@@ -204,7 +206,12 @@ class GPT:
         split   = int(len(tokens)*self.valid_split)
         self.dataset = {}
 
-        for name, (start, end) in zip(['train', 'valid'],[[None, -split], [-split, None]]):
+        if self.n_valid_steps != 0:
+            name_start_end = zip(['train', 'valid'],[[None, -split], [-split, None]])
+        elif  self.n_valid_steps == 0:
+            name_start_end = zip(['train'],[[None, None]])
+            
+        for name, (start, end) in name_start_end:
             self.dataset[name] = tf.data.Dataset.from_tensor_slices(tf.convert_to_tensor(tokens[start:end]))\
                                     .window(size=self.block_size+1, shift=1)\
                                     .flat_map(lambda x: x.batch(self.block_size+1, drop_remainder=True))\
