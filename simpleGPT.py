@@ -128,8 +128,9 @@ class GPT:
         with self.train_summary_writer.as_default():
             tf.summary.scalar('loss', self.train_metric.result(), step=step)
 
-        with self.valid_summary_writer.as_default():
-            tf.summary.scalar('val loss', self.valid_metric.result(), step=step)
+        if self.n_valid_step != 0:
+            with self.valid_summary_writer.as_default():
+                tf.summary.scalar('val loss', self.valid_metric.result(), step=step)
 
         self.train_metric.reset_state()
         self.valid_metric.reset_state()
