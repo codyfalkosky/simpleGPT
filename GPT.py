@@ -70,8 +70,6 @@ class GPT:
         total_steps = round((len(self.dataset) * epochs) / batch_size / grad_acc_steps)
         self.model.train()
 
-        train_loop(epochs, dataloader, self.model, self.optimizer, self.loss_history, self.device)
-
         for epoch in range(epochs):
             for i, (x, y_true) in enumerate(dataloader):
                 x = x.to(self.device)
