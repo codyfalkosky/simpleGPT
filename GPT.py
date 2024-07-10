@@ -42,7 +42,7 @@ class GPT:
 
         self.device = device
         
-        self.model = torch.jit.script(Transformer(n_vocab=n_vocab, chan_dim=chan_dim, n_heads=n_heads, 
+        self.model = torch.compile(Transformer(n_vocab=n_vocab, chan_dim=chan_dim, n_heads=n_heads, 
                                          inner_mult=inner_mult, Nx=Nx, max_context=max_context, 
                                          dropout=dropout, device=device))
         if tokenizer:
@@ -60,13 +60,13 @@ class GPT:
         '''
         spm.SentencePieceTrainer.train(model_prefix=output_path, input=corpus, vocab_size=vocab_size)
 
-    def train(self, corpus_path='./data/corpus.txt', context_window=128, epochs=5, batch_size=16, grad_acc_steps=4, lr=1e-5, num_workers=12):
+    def train(self, corpus_path='./data/corpus.txt', context_window=128, epochs=5, batch_size=16, grad_acc_steps=4, lr=1e-5, num_workers=12, pin_memory=False):
         capture = ['corpus_path', 'context_window', 'epochs', 'batch_size', 'grad_acc_steps', 'lr', 'num_workers']
         self.train_args = {k:v for k, v in locals().items() if k in capture}
         self.dataset = CorpusDataset(corpus_path, self.tokenizer, context_window)
         if not hasattr(self, 'optimizer'):
             self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr)
-        dataloader = DataLoader(self.dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+        dataloader = DataLoader(self.dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=pin_memory)
         total_steps = round((len(self.dataset) * epochs) / batch_size / grad_acc_steps)
         self.model.train()
 
