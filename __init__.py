@@ -1,1 +1,1 @@
-from .simpleGPT import GPT
+from .GPT import GPT
