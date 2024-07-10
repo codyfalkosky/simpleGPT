@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from IPython.display import clear_output
 from datetime import datetime
 import os
+from typing import List
 
 
 class CorpusDataset(Dataset):
@@ -41,9 +42,9 @@ class GPT:
 
         self.device = device
         
-        self.model = Transformer(n_vocab=n_vocab, chan_dim=chan_dim, n_heads=n_heads, 
-                                 inner_mult=inner_mult, Nx=Nx, max_context=max_context, 
-                                 dropout=dropout, device=device)
+        self.model = torch.jit.script(Transformer(n_vocab=n_vocab, chan_dim=chan_dim, n_heads=n_heads, 
+                                         inner_mult=inner_mult, Nx=Nx, max_context=max_context, 
+                                         dropout=dropout, device=device))
         if tokenizer:
             self.tokenizer = spm.SentencePieceProcessor(model_file=tokenizer)
 
@@ -68,6 +69,8 @@ class GPT:
         dataloader = DataLoader(self.dataset, batch_size=batch_size, shuffle=True)
         total_steps = round((len(self.dataset) * epochs) / batch_size / grad_acc_steps)
         self.model.train()
+
+        train_loop(epochs, dataloader, self.model, self.optimizer, self.loss_history, self.device)
 
         for epoch in range(epochs):
             for i, (x, y_true) in enumerate(dataloader):
@@ -103,4 +106,44 @@ class GPT:
             json.dump(training_history, file)
 
         torch.save(self.model.state_dict(), save_dir + '/weights.pt')
+
+# @torch.jit.script
+# def train_loop(epochs, dataloader, model, optimizer, loss_history, device):
+#     for epoch in range(int(epochs)):
+#         for i, (x, y_true) in enumerate(dataloader):
+#             x = x.to(device)
+#             y_true = y_true.to(device)
+            
+#             y_pred = model(x)
+#             loss = F.cross_entropy(y_pred.permute(0,2,1), y_true)
+#             loss = loss / grad_acc_steps
+#             loss.backward()
         
+#             if (i + 1) % grad_acc_steps == 0:
+#                 this_loss = loss.cpu().item()
+#                 loss_history.append(this_loss)
+#                 optimizer.step()
+#                 optimizer.zero_grad()
+        
+                # clear_output(wait=True)
+                # plt.title(f'Loss: {this_loss:.04f}   Step: {round(i/grad_acc_steps)}/{total_steps}')
+                # plt.plot(loss_history)
+                # plt.show()
+
+# @torch.jit.script
+# def train_loop(epochs: int, dataloader: DataLoader, model: torch.nn.Module, optimizer: torch.optim.Optimizer, loss_history: List[float], device: torch.device, grad_acc_steps: int):
+#     for epoch in range(epochs):
+#         for i, (x, y_true) in enumerate(dataloader):
+#             x = x.to(device)
+#             y_true = y_true.to(device)
+
+#             y_pred = model(x)
+#             loss = F.cross_entropy(y_pred, y_true)
+#             loss = loss / grad_acc_steps
+#             loss.backward()
+
+#             if (i + 1) % grad_acc_steps == 0:
+#                 this_loss = loss.item()
+#                 loss_history.append(this_loss)
+#                 optimizer.step()
+#                 optimizer.zero_grad()
