@@ -60,13 +60,13 @@ class GPT:
         '''
         spm.SentencePieceTrainer.train(model_prefix=output_path, input=corpus, vocab_size=vocab_size)
 
-    def train(self, corpus_path='./data/corpus.txt', context_window=128, epochs=5, batch_size=16, grad_acc_steps=4, lr=1e-5,):
-        capture = ['corpus_path', 'context_window', 'epochs', 'batch_size', 'grad_acc_steps', 'lr']
+    def train(self, corpus_path='./data/corpus.txt', context_window=128, epochs=5, batch_size=16, grad_acc_steps=4, lr=1e-5, num_workers=12):
+        capture = ['corpus_path', 'context_window', 'epochs', 'batch_size', 'grad_acc_steps', 'lr', 'num_workers']
         self.train_args = {k:v for k, v in locals().items() if k in capture}
         self.dataset = CorpusDataset(corpus_path, self.tokenizer, context_window)
         if not hasattr(self, 'optimizer'):
             self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr)
-        dataloader = DataLoader(self.dataset, batch_size=batch_size, shuffle=True)
+        dataloader = DataLoader(self.dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
         total_steps = round((len(self.dataset) * epochs) / batch_size / grad_acc_steps)
         self.model.train()
 
@@ -111,18 +111,18 @@ class GPT:
 #         for i, (x, y_true) in enumerate(dataloader):
 #             x = x.to(device)
 #             y_true = y_true.to(device)
-            
+
 #             y_pred = model(x)
 #             loss = F.cross_entropy(y_pred.permute(0,2,1), y_true)
 #             loss = loss / grad_acc_steps
 #             loss.backward()
-        
+
 #             if (i + 1) % grad_acc_steps == 0:
 #                 this_loss = loss.cpu().item()
 #                 loss_history.append(this_loss)
 #                 optimizer.step()
 #                 optimizer.zero_grad()
-        
+
                 # clear_output(wait=True)
                 # plt.title(f'Loss: {this_loss:.04f}   Step: {round(i/grad_acc_steps)}/{total_steps}')
                 # plt.plot(loss_history)
