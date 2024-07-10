@@ -1,4 +1,4 @@
-from model import Transformer
+from .model import Transformer
 import sentencepiece as spm
 from tqdm.notebook import tqdm
 from torch.utils.data import Dataset, DataLoader
