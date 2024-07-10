@@ -104,14 +104,3 @@ class GPT:
 
         torch.save(self.model.state_dict(), save_dir + '/weights.pt')
         
-
-
-gpt = GPT(tokenizer='tokenizers/potter_10K.model')
-
-gpt.train()
-
-gpt.save_train('.')
-
-gpt.init_args
-
-
