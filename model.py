@@ -81,9 +81,10 @@ class MuliHeadedMaskedSelfAttention(nn.Module):
         # masking - 3.2.3 page 5
         # keep the lower triangle
         mask = torch.tril(torch.ones_like(w, dtype=torch.bool))
+
         # set upper tri to -inf
         w = torch.where(mask, w, torch.tensor(float('-inf')))
-
+       
         # scaled dot prod step 2 [ softmax ]- 3.2.1 page 4
         w = F.softmax(w, dim=-1)
 
