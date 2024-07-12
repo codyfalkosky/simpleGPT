@@ -19,14 +19,14 @@ class CorpusDataset(Dataset):
         self.context_window = context_window        
         self.tokens = self._tokenize_corpus(corpus_path)
         self.padding_token = self.tokenizer.piece_to_id('[PAD]')
-        self.padding = torch.tensor([self.padding_token] * self.context_window, dtype=torch.int32)
+        self.padding = torch.tensor([self.padding_token] * self.context_window, dtype=torch.long)
 
     def _tokenize_corpus(self, corpus_path):
         with open(corpus_path, 'r') as file:
             corpus = file.read()
 
         tokens = self.tokenizer.encode(corpus)
-        tokens = torch.tensor(tokens, dtype=torch.int32)
+        tokens = torch.tensor(tokens, dtype=torch.long)
         return tokens
 
     def __len__(self,):
