@@ -76,7 +76,7 @@ class GPT:
         '''
         spm.SentencePieceTrainer.train(model_prefix=output_path, input=corpus, vocab_size=vocab_size, user_defined_symbols='[PAD]')
 
-    def train(self, corpus_path='./data/corpus.txt', epochs=5, batch_size=16, grad_acc_steps=4, lr=1e-5, num_workers=12, pin_memory=False):
+    def train(self, corpus_path='./data/corpus.txt', epochs=5, batch_size=16, grad_acc_steps=4, lr=1e-5, num_workers=12, pin_memory=False, break_at=False):
         capture = ['corpus_path', 'epochs', 'batch_size', 'grad_acc_steps', 'lr', 'num_workers']
         self.train_args = {k:v for k, v in locals().items() if k in capture}
         self.dataset = CorpusDataset(corpus_path, self.tokenizer, self.context_window)
@@ -105,7 +105,11 @@ class GPT:
                     clear_output(wait=True)
                     plt.title(f'Loss: {this_loss:.04f}   Step: {round(i/grad_acc_steps)}/{total_steps}')
                     plt.plot(self.loss_history)
-                    plt.show() 
+                    plt.show()
+
+                if break_at:
+                    if i > break_at:
+                        break
 
     def save_train(self, path):
         name = datetime.now().strftime('%Y-%m-%d__%H_%M_%S')
@@ -171,7 +175,7 @@ class GPT:
 if __name__ == '__main__':
     gpt = GPT(tokenizer='./tokenizers/potter_5k_padding.model', n_vocab=5_000,
              chan_dim=512, n_heads=4, inner_mult=4, Nx=16)
-    gpt.train(num_workers=0)
+    gpt.train(num_workers=0, epochs=1, break_at=100)
 
 # TEST top p
 if __name__ == '__main__':
@@ -183,5 +187,3 @@ if __name__ == '__main__':
 if __name__ == '__main__':
     gpt = GPT(tokenizer='./tokenizers/potter_5k_padding.model', n_vocab=5_000)
     print(gpt.generate(['test', 'multiple'], 10))
-
-
