@@ -51,14 +51,17 @@ class GPT:
         self.n_heads = n_heads
         self.device = device
         self.context_window = context_window
-        
-        # self.model = torch.compile(Transformer(n_vocab=n_vocab, chan_dim=chan_dim, n_heads=n_heads, 
-        #                                  inner_mult=inner_mult, Nx=Nx, max_context=max_context, 
-        #                                  dropout=dropout, device=device))
 
-        self.model = Transformer(n_vocab=n_vocab, chan_dim=chan_dim, n_heads=n_heads, 
-                                 inner_mult=inner_mult, Nx=Nx, max_context=max_context, 
-                                 dropout=dropout, device=device)
+        if device != 'mps':
+            print('using torch.compile')
+            self.model = torch.compile(Transformer(n_vocab=n_vocab, chan_dim=chan_dim, n_heads=n_heads, 
+                                             inner_mult=inner_mult, Nx=Nx, max_context=max_context, 
+                                             dropout=dropout, device=device))
+        if device == 'mps':
+            print('NOT using torch.compile')
+            self.model = Transformer(n_vocab=n_vocab, chan_dim=chan_dim, n_heads=n_heads, 
+                                     inner_mult=inner_mult, Nx=Nx, max_context=max_context, 
+                                     dropout=dropout, device=device)
         if tokenizer:
             self.tokenizer = spm.SentencePieceProcessor(model_file=tokenizer)
 
