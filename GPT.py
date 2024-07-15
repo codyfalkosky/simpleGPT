@@ -11,6 +11,7 @@ from datetime import datetime
 import os
 from typing import List
 import random
+import numpy as np
 
 
 class CorpusDataset(Dataset):
@@ -72,7 +73,7 @@ class GPT:
     def train_tokenizer(self, corpus, output_path, vocab_size):
         '''
         Args:
-            corpus (str): 'path/to/corpus/.txt'
+            corpus (str): 'path/to/corpus.txt'
                 the corpus must be a document with one sentence per line
             output_path (str): 'path/to/file/prefix'
             vocab_size (int): size of vocab to train
@@ -87,7 +88,9 @@ class GPT:
             self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr)
         dataloader = DataLoader(self.dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=pin_memory)
         total_steps = round((len(self.dataset) * epochs) / batch_size / grad_acc_steps)
+        epoch_len = len(self.dataset) * epochs
         self.model.train()
+        loss_accum = []
 
         for epoch in range(epochs):
             for i, (x, y_true) in enumerate(dataloader):
@@ -97,16 +100,16 @@ class GPT:
                 y_pred = self.model(x)
                 loss = F.cross_entropy(y_pred.permute(0,2,1), y_true, ignore_index=self.dataset.padding_token)
                 loss = loss / grad_acc_steps
-                loss.backward()                
+                loss.backward()
+                loss_accum.append(loss.cpu().item())
 
                 if (i + 1) % grad_acc_steps == 0:
-                    this_loss = loss.cpu().item()
-                    self.loss_history.append(this_loss)
+                    self.loss_history.append(np.mean(loss_accum))
                     self.optimizer.step()
                     self.optimizer.zero_grad()
 
                     clear_output(wait=True)
-                    plt.title(f'Loss: {this_loss:.04f}   Step: {round(i/grad_acc_steps)}/{total_steps}')
+                    plt.title(f'Loss: {this_loss:.04f}   Step: {round((i * (epoch_len*epoch))/grad_acc_steps)}/{total_steps}')
                     plt.plot(self.loss_history)
                     plt.show()
 
@@ -128,20 +131,38 @@ class GPT:
 
         torch.save(self.model.state_dict(), save_dir + '/weights.pt')
 
-    def generate(self, text, n_gen, top_p=0, temperature=1):
-        batch_size = len(text)
+    def load_weights(self, path):
+        state_dict = torch.load(path, map_location=self.device)
+
+        new_state_dict = {}
+        for k, v in state_dict.items():
+            if k.startswith('_orig_mod.'):
+                new_key = k[len('_orig_mod.'):]
+                new_state_dict[new_key] = v
+            else:
+                new_state_dict[k] = v
+        
+        self.model.load_state_dict(new_state_dict)
+
+    def generate(self, text_lists, n_gen, top_p=0, temperature=1):
+        self.model.eval()
+        
+        batch_size = len(text_lists)
+        all_tokens = [[]] * batch_size
+
 
         # init input tensor and fill with [PAD]
         input_tensor = torch.empty((batch_size, self.context_window), dtype=torch.int32).to(self.device)
         input_tensor[:, :] = self.tokenizer.piece_to_id('[PAD]')
 
         # fill with text padded on left side
-        for batch_idx, t in enumerate(text):
+        for batch_idx, t in enumerate(text_lists):
             tokens = self.tokenizer.encode(t)
+            all_tokens[batch_idx] = tokens
             input_tensor[batch_idx, -len(tokens):] = torch.tensor(tokens)
             
         # generate tokens
-        for n in range(n_gen):
+        for n in tqdm(range(n_gen)):
             y = self.model(input_tensor)
             probabilities = F.softmax(y[:, -1, :] / temperature, dim=-1)
             next_tokens = self.top_p_sample(probabilities, top_p)
@@ -152,11 +173,16 @@ class GPT:
             # add new tokens
             input_tensor[:, -1:] = next_tokens
 
+            # 
+            for batch_idx, token in enumerate(next_tokens.tolist()):
+                all_tokens[batch_idx].extend(token)
+                
+
         # decode
         text_out = []
-        for batch_idx, tokens in enumerate(input_tensor):
-            not_padding = tokens != self.tokenizer.piece_to_id('[PAD]')
-            text = self.tokenizer.decode(tokens[not_padding].tolist())
+        for batch_idx, tokens in enumerate(all_tokens):
+            # not_padding = tokens != self.tokenizer.piece_to_id('[PAD]')
+            text = self.tokenizer.decode(tokens)
             text_out.append(text)
 
         return text_out
