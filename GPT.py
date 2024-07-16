@@ -106,7 +106,8 @@ class GPT:
                 
 
                 if i % show_every == 0:
-                    self.loss_history.append(loss.cpu().item())
+                    this_loss = loss.cpu().item()
+                    self.loss_history.append(this_loss)
 
                     this_step = (epoch * epoch_len) + i
 
