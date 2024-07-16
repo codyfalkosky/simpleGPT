@@ -80,17 +80,17 @@ class GPT:
         '''
         spm.SentencePieceTrainer.train(model_prefix=output_path, input=corpus, vocab_size=vocab_size, user_defined_symbols='[PAD]')
 
-    def train(self, corpus_path='./data/corpus.txt', epochs=5, batch_size=16, grad_acc_steps=4, lr=1e-5, num_workers=12, pin_memory=False, break_at=False):
+    def train(self, corpus_path='./data/corpus.txt', epochs=5, batch_size=16, grad_acc_steps=1, lr=1e-5, num_workers=12, pin_memory=False, break_at=False, show_every=100):
         capture = ['corpus_path', 'epochs', 'batch_size', 'grad_acc_steps', 'lr', 'num_workers']
         self.train_args = {k:v for k, v in locals().items() if k in capture}
         self.dataset = CorpusDataset(corpus_path, self.tokenizer, self.context_window)
         if not hasattr(self, 'optimizer'):
             self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=lr)
         dataloader = DataLoader(self.dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=pin_memory)
-        total_steps = round((len(self.dataset) * epochs) / batch_size / grad_acc_steps)
-        epoch_len = len(self.dataset) * epochs
+        total_steps = (len(self.dataset) * epochs) / batch_size
+        epoch_len = len(self.dataset) / batch_size
         self.model.train()
-        loss_accum = []
+        # loss_accum = []
 
         for epoch in range(epochs):
             for i, (x, y_true) in enumerate(dataloader):
@@ -99,18 +99,19 @@ class GPT:
                 
                 y_pred = self.model(x)
                 loss = F.cross_entropy(y_pred.permute(0,2,1), y_true, ignore_index=self.dataset.padding_token)
-                loss = loss / grad_acc_steps
+                # loss = loss / grad_acc_steps
                 loss.backward()
-                loss_accum.append(loss.cpu().item())
+                self.optimizer.step()
+                self.optimizer.zero_grad()
+                
 
-                if (i + 1) % grad_acc_steps == 0:
-                    this_loss = np.mean(loss_accum)
-                    self.loss_history.append(this_loss)
-                    self.optimizer.step()
-                    self.optimizer.zero_grad()
+                if i % show_every == 0:
+                    self.loss_history.append(loss.cpu().item())
+
+                    this_step = (epoch * epoch_len) + i
 
                     clear_output(wait=True)
-                    plt.title(f'Loss: {this_loss:.04f}   Step: {round((i * (epoch_len*epoch))/grad_acc_steps)}/{total_steps}')
+                    plt.title(f'Loss: {this_loss:.04f}   Step: {this_step}/{total_steps}')
                     plt.plot(self.loss_history)
                     plt.show()
 
@@ -131,6 +132,8 @@ class GPT:
             json.dump(training_history, file)
 
         torch.save(self.model.state_dict(), save_dir + '/weights.pt')
+        torch.save(self.optimizer.state_dict(), save_dir + '/optimizer.pt')
+        
 
     def load_weights(self, path):
         state_dict = torch.load(path, map_location=self.device)
