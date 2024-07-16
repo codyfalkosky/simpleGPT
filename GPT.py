@@ -80,7 +80,10 @@ class GPT:
         '''
         spm.SentencePieceTrainer.train(model_prefix=output_path, input=corpus, vocab_size=vocab_size, user_defined_symbols='[PAD]')
 
-    def train(self, corpus_path='./data/corpus.txt', epochs=5, batch_size=16, grad_acc_steps=1, lr=1e-5, num_workers=12, pin_memory=False, break_at=False, show_every=100):
+    def train(self, corpus_path='./data/corpus.txt', epochs=5, batch_size=16, grad_acc_steps=1, 
+              lr=1e-5, num_workers=12, pin_memory=False, break_at=False, show_every=100, time_limit_hours=12):
+        start = time.time()
+        self.keep_training = True
         capture = ['corpus_path', 'epochs', 'batch_size', 'grad_acc_steps', 'lr', 'num_workers']
         self.train_args = {k:v for k, v in locals().items() if k in capture}
         self.dataset = CorpusDataset(corpus_path, self.tokenizer, self.context_window)
@@ -93,32 +96,39 @@ class GPT:
         # loss_accum = []
 
         for epoch in range(epochs):
-            for i, (x, y_true) in enumerate(dataloader):
-                x = x.to(self.device)
-                y_true = y_true.to(self.device)
-                
-                y_pred = self.model(x)
-                loss = F.cross_entropy(y_pred.permute(0,2,1), y_true, ignore_index=self.dataset.padding_token)
-                # loss = loss / grad_acc_steps
-                loss.backward()
-                self.optimizer.step()
-                self.optimizer.zero_grad()
-                
-
-                if i % show_every == 0:
-                    this_loss = loss.cpu().item()
-                    self.loss_history.append(this_loss)
-
-                    this_step = (epoch * epoch_len) + i
-
-                    clear_output(wait=True)
-                    plt.title(f'Loss: {this_loss:.04f}   Step: {this_step}/{total_steps}')
-                    plt.plot(self.loss_history)
-                    plt.show()
-
-                if break_at:
-                    if i > break_at:
+            if self.keep_training:
+                for i, (x, y_true) in enumerate(dataloader):
+                    x = x.to(self.device)
+                    y_true = y_true.to(self.device)
+                    
+                    y_pred = self.model(x)
+                    loss = F.cross_entropy(y_pred.permute(0,2,1), y_true, ignore_index=self.dataset.padding_token)
+                    # loss = loss / grad_acc_steps
+                    loss.backward()
+                    self.optimizer.step()
+                    self.optimizer.zero_grad()
+                    
+    
+                    if i % show_every == 0:
+                        this_loss = loss.cpu().item()
+                        self.loss_history.append(this_loss)
+    
+                        this_step = (epoch * epoch_len) + i
+    
+                        clear_output(wait=True)
+                        plt.title(f'Loss: {this_loss:.04f}   Step: {this_step}/{total_steps}')
+                        plt.plot(self.loss_history)
+                        plt.show()
+    
+                    if break_at:
+                        if i > break_at:
+                            self.keep_training = False
+                            break
+    
+                    if self.time_limit(start, time_limit_hours):
+                        self.keep_training = False
                         break
+                    
 
     def save_train(self, path):
         name = datetime.now().strftime('%Y-%m-%d__%H_%M_%S')
@@ -136,8 +146,8 @@ class GPT:
         torch.save(self.optimizer.state_dict(), save_dir + '/optimizer.pt')
         
 
-    def load_weights(self, path):
-        state_dict = torch.load(path, map_location=self.device)
+    def load_weights(self, state_dict_path, load_to_obj):
+        state_dict = torch.load(state_dict_path, map_location=self.device)
 
         new_state_dict = {}
         for k, v in state_dict.items():
@@ -147,7 +157,24 @@ class GPT:
             else:
                 new_state_dict[k] = v
         
-        self.model.load_state_dict(new_state_dict)
+        load_to_obj.load_state_dict(new_state_dict)
+
+    def load_checkpoint(self, folder):
+        self.load_weights(folder+'/weights.pt', self.model)
+        print('model weights loaded')
+        
+        if not hasattr(self, 'optimizer'):
+            self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=1e-3)
+            
+        self.load_weights(folder+'/optimizer.pt', self.optimizer)
+        print('optimizer weights loaded')
+
+        with open('folder' + '/history.json', 'r') as file:
+            history = json.load(file)
+
+        self.loss_history = history['history']
+        print('training history loaded')
+        print('\nready to continue training 😎\n')
 
     def generate(self, text_lists, n_gen, top_p=0, temperature=1):
         self.model.eval()
@@ -202,7 +229,17 @@ class GPT:
         sorted_probs[not_sample] = 0.0
         chosen_prob = torch.multinomial(sorted_probs, 1)
         chosen_tokens = torch.gather(sorted_tokens, -1, chosen_prob)
-        return chosen_tokens 
+        return chosen_tokens
+
+    @staticmethod
+    def time_limit(start, hours_limit):
+        end = time.time()
+        seconds = end - start
+        hours = seconds / 60 / 60
+        if hours >= hours_limit:
+            return True
+        else:
+            return False
 
 
 # TEST Train
