@@ -160,16 +160,16 @@ class GPT:
         load_to_obj.load_state_dict(new_state_dict)
 
     def load_checkpoint(self, folder):
-        self.load_weights(folder+'/weights.pt', self.model)
+        self.load_weights(folder + '/weights.pt', self.model)
         print('model weights loaded')
         
         if not hasattr(self, 'optimizer'):
             self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=1e-3)
             
-        self.load_weights(folder+'/optimizer.pt', self.optimizer)
+        self.load_weights(folder + '/optimizer.pt', self.optimizer)
         print('optimizer weights loaded')
 
-        with open('folder' + '/history.json', 'r') as file:
+        with open(folder + '/history.json', 'r') as file:
             history = json.load(file)
 
         self.loss_history = history['history']
