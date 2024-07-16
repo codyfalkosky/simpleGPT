@@ -82,7 +82,7 @@ class GPT:
         spm.SentencePieceTrainer.train(model_prefix=output_path, input=corpus, vocab_size=vocab_size, user_defined_symbols='[PAD]')
 
     def train(self, corpus_path='./data/corpus.txt', epochs=5, batch_size=16, grad_acc_steps=1, 
-              lr=1e-5, num_workers=12, pin_memory=False, break_at=False, show_every=100, time_limit_hours=12):
+              lr=1e-5, num_workers=12, pin_memory=False, break_at=False, show_every=100, time_limit_hours=12, match_step=True):
         start = time.time()
         self.keep_training = True
         capture = ['corpus_path', 'epochs', 'batch_size', 'grad_acc_steps', 'lr', 'num_workers']
@@ -99,6 +99,7 @@ class GPT:
         for epoch in range(epochs):
             if self.keep_training:
                 for i, (x, y_true) in enumerate(dataloader):
+                    
                     x = x.to(self.device)
                     y_true = y_true.to(self.device)
                     
@@ -148,9 +149,9 @@ class GPT:
         
 
     def load_weights(self, state_dict_path, load_to_obj):
-        state_dict = torch.load(state_dict_path, map_location=self.device)
 
         if self.device == 'mps':
+            state_dict = torch.load(state_dict_path, map_location=self.device)
             new_state_dict = {}
             for k, v in state_dict.items():
                 if k.startswith('_orig_mod.'):
@@ -162,6 +163,7 @@ class GPT:
             load_to_obj.load_state_dict(new_state_dict)
 
         else:
+            state_dict = torch.load(state_dict_path)
             load_to_obj.load_state_dict(state_dict)
 
     def load_checkpoint(self, folder):
