@@ -149,15 +149,19 @@ class GPT:
     def load_weights(self, state_dict_path, load_to_obj):
         state_dict = torch.load(state_dict_path, map_location=self.device)
 
-        new_state_dict = {}
-        for k, v in state_dict.items():
-            if k.startswith('_orig_mod.'):
-                new_key = k[len('_orig_mod.'):]
-                new_state_dict[new_key] = v
-            else:
-                new_state_dict[k] = v
-        
-        load_to_obj.load_state_dict(new_state_dict)
+        if self.device == 'mps':
+            new_state_dict = {}
+            for k, v in state_dict.items():
+                if k.startswith('_orig_mod.'):
+                    new_key = k[len('_orig_mod.'):]
+                    new_state_dict[new_key] = v
+                else:
+                    new_state_dict[k] = v
+            
+            load_to_obj.load_state_dict(new_state_dict)
+
+        else:
+            load_to_obj.load_state_dict(state_dict)
 
     def load_checkpoint(self, folder):
         self.load_weights(folder + '/weights.pt', self.model)
