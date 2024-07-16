@@ -104,7 +104,8 @@ class GPT:
                 loss_accum.append(loss.cpu().item())
 
                 if (i + 1) % grad_acc_steps == 0:
-                    self.loss_history.append(np.mean(loss_accum))
+                    this_loss = np.mean(loss_accum)
+                    self.loss_history.append(this_loss)
                     self.optimizer.step()
                     self.optimizer.zero_grad()
 
