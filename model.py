@@ -20,10 +20,10 @@ class FeedForward(nn.Module):
     '''
     def __init__(self, chan_dim=512, inner_mult=4, dropout=.2, device='cpu', **kwargs):
         super().__init__(**kwargs)
-        self.W1 = nn.Parameter(kaiming_normal_(empty(chan_dim, chan_dim*inner_mult ))).to(device)
-        self.b1 = nn.Parameter(zeros(chan_dim*inner_mult)).to(device)
-        self.W2 = nn.Parameter(xavier_normal_(empty(chan_dim*inner_mult, chan_dim))).to(device)
-        self.b2 = nn.Parameter(zeros(chan_dim)).to(device)
+        self.W1 = nn.Parameter(kaiming_normal_(empty(chan_dim, chan_dim*inner_mult, device=device)))
+        self.b1 = nn.Parameter(zeros(chan_dim*inner_mult, device=device))
+        self.W2 = nn.Parameter(xavier_normal_(empty(chan_dim*inner_mult, chan_dim, device=device)))
+        self.b2 = nn.Parameter(zeros(chan_dim, device=device))
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
@@ -39,6 +39,7 @@ class MuliHeadedMaskedSelfAttention(nn.Module):
     '''from  "Attention is all you Need" (Vaswani et al., 2017)'''
     
     def __init__(self, chan_dim=512, n_heads=4, dropout=.2, device='cpu', **kwargs):
+        print(device)
         '''
         Args:
             n_heads: integer
@@ -49,10 +50,10 @@ class MuliHeadedMaskedSelfAttention(nn.Module):
         # d_k = d_v = d_model / h - 3.2.2 page 5
         self.d_k = chan_dim // n_heads
 
-        self.Q = nn.Parameter(xavier_normal_(empty(chan_dim, n_heads, self.d_k))).to(device)
-        self.K = nn.Parameter(xavier_normal_(empty(chan_dim, n_heads, self.d_k))).to(device)
-        self.V = nn.Parameter(xavier_normal_(empty(chan_dim, n_heads, self.d_k))).to(device)
-        self.O = nn.Parameter(xavier_normal_(empty(self.d_k * n_heads, chan_dim))).to(device)
+        self.Q = nn.Parameter(xavier_normal_(empty(chan_dim, n_heads, self.d_k, device=device)))
+        self.K = nn.Parameter(xavier_normal_(empty(chan_dim, n_heads, self.d_k, device=device)))
+        self.V = nn.Parameter(xavier_normal_(empty(chan_dim, n_heads, self.d_k, device=device)))
+        self.O = nn.Parameter(xavier_normal_(empty(self.d_k * n_heads, chan_dim, device=device)))
 
 
         self.dropout1   = nn.Dropout(dropout) # REVIEW IF NEEDED
@@ -122,8 +123,8 @@ class PositionalEncoding(nn.Module):
         '''
         super().__init__(**kwargs)
         # self.pos   = float(max_pos)
-        self.t_pos = torch.arange(float(max_context), dtype=torch.float32).to(device)
-        self.c_pos = torch.arange(float(chan_dim), dtype=torch.float32).to(device) # notated as i in original equation
+        self.t_pos = torch.arange(float(max_context), dtype=torch.float32, device=device)
+        self.c_pos = torch.arange(float(chan_dim), dtype=torch.float32, device=device) # notated as i in original equation
 
     def forward(self, x):
         '''
@@ -154,10 +155,10 @@ class TransformerBlock(nn.Module):
                 dropout_rate, padded to dropout layers
         '''
         super().__init__(**kwargs)
-        self.att = MuliHeadedMaskedSelfAttention(chan_dim, n_heads, dropout, device)
+        self.att = MuliHeadedMaskedSelfAttention(chan_dim, n_heads, dropout, device).
         self.ffd = FeedForward(chan_dim, inner_mult, dropout, device)
-        self.ln1 = nn.LayerNorm(chan_dim).to(device)
-        self.ln2 = nn.LayerNorm(chan_dim).to(device)
+        self.ln1 = nn.LayerNorm(chan_dim, device=device)
+        self.ln2 = nn.LayerNorm(chan_dim, device=device)
         
     def forward(self, x):
         '''
