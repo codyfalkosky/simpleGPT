@@ -39,7 +39,6 @@ class MuliHeadedMaskedSelfAttention(nn.Module):
     '''from  "Attention is all you Need" (Vaswani et al., 2017)'''
     
     def __init__(self, chan_dim=512, n_heads=4, dropout=.2, device='cpu', **kwargs):
-        print(device)
         '''
         Args:
             n_heads: integer
@@ -155,7 +154,7 @@ class TransformerBlock(nn.Module):
                 dropout_rate, padded to dropout layers
         '''
         super().__init__(**kwargs)
-        self.att = MuliHeadedMaskedSelfAttention(chan_dim, n_heads, dropout, device).
+        self.att = MuliHeadedMaskedSelfAttention(chan_dim, n_heads, dropout, device)
         self.ffd = FeedForward(chan_dim, inner_mult, dropout, device)
         self.ln1 = nn.LayerNorm(chan_dim, device=device)
         self.ln2 = nn.LayerNorm(chan_dim, device=device)
