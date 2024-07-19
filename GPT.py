@@ -47,7 +47,24 @@ class CorpusDataset(Dataset):
 
 
 class GPT:
-    def __init__(self, device='mps', tokenizer=None, n_vocab=10000, chan_dim=1024, n_heads=8, inner_mult=4, Nx=16, max_context=10000, dropout=.3, context_window=128):
+    def __init__(self, pre_trained=None, device='mps', tokenizer=None, n_vocab=10000, chan_dim=1024, n_heads=8, inner_mult=4, Nx=16, max_context=10000, dropout=.3, context_window=128):
+
+        if pre_trained == 'Potter':
+            for directory, dir_names, file_names in os.walk('.'):
+                if 'potter_5k_padding.model' in file_names:
+                    tokenizer = directory + '/potter_5k_padding.model'
+                    break
+            n_vocab=5_000
+            chan_dim=1024
+            n_heads=4
+            inner_mult=4
+            Nx=8
+            max_context=10_000
+            dropout=.3
+            context_window=256
+
+        assert tokenizer != None, 'path to tokenizer must be specified'
+        
         self.init_args = {k:v for k, v in locals().items() if k != 'self'}
 
         self.n_heads = n_heads
@@ -55,12 +72,12 @@ class GPT:
         self.context_window = context_window
 
         if device != 'mps':
-            print('using torch.compile')
+            # print('using torch.compile')
             self.model = torch.compile(Transformer(n_vocab=n_vocab, chan_dim=chan_dim, n_heads=n_heads, 
                                              inner_mult=inner_mult, Nx=Nx, max_context=max_context, 
                                              dropout=dropout, device=device))
         if device == 'mps':
-            print('NOT using torch.compile')
+            # print('NOT using torch.compile')
             self.model = Transformer(n_vocab=n_vocab, chan_dim=chan_dim, n_heads=n_heads, 
                                      inner_mult=inner_mult, Nx=Nx, max_context=max_context, 
                                      dropout=dropout, device=device)
@@ -70,6 +87,13 @@ class GPT:
         self.padding_token = self.tokenizer.piece_to_id('[PAD]')
 
         self.loss_history = []
+
+        if pre_trained == 'Potter':
+            for directory, dir_names, file_names in os.walk('.'):
+                if 'potter_weights.pt' in file_names:
+                    self.load_weights(directory + '/potter_weights.pt', self.model)
+                    break
+            
 
     def train_tokenizer(self, corpus, output_path, vocab_size):
         '''
@@ -130,8 +154,11 @@ class GPT:
                     if self.time_limit(start, time_limit_hours):
                         self.keep_training = False
                         break
-                    
 
+    def update_lr(self, lr):
+        for param_group in self.optimizer.param_groups:
+            param_group['lr'] = lr
+                    
     def save_train(self, path):
         name = datetime.now().strftime('%Y-%m-%d__%H_%M_%S')
         save_dir = path + '/' + name
@@ -183,7 +210,7 @@ class GPT:
         print('training history loaded')
         print('\nready to continue training 😎\n')
 
-    def generate(self, text_lists, n_gen, top_p=0, temperature=1):
+    def generate(self, text_lists, n_gen, top_p=0, temperature=1, show_each=False):
         self.model.eval()
         
         batch_size = len(text_lists)
@@ -215,16 +242,26 @@ class GPT:
             # 
             for batch_idx, token in enumerate(next_tokens.tolist()):
                 all_tokens[batch_idx].extend(token)
+
+                if show_each:
+                    text_out = []
+                    for batch_idx, tokens in enumerate(all_tokens):
+                        # not_padding = tokens != self.tokenizer.piece_to_id('[PAD]')
+                        text = self.tokenizer.decode(tokens)
+                        text_out.append(text)
+                    clear_output(wait=True)
+                    for t in text_out:
+                        print(t, '\n')
                 
-
-        # decode
-        text_out = []
-        for batch_idx, tokens in enumerate(all_tokens):
-            # not_padding = tokens != self.tokenizer.piece_to_id('[PAD]')
-            text = self.tokenizer.decode(tokens)
-            text_out.append(text)
-
-        return text_out
+                else:
+                    # decode
+                    text_out = []
+                    for batch_idx, tokens in enumerate(all_tokens):
+                        # not_padding = tokens != self.tokenizer.piece_to_id('[PAD]')
+                        text = self.tokenizer.decode(tokens)
+                        text_out.append(text)
+            
+                    return text_out
     
 
     def top_p_sample(self, probabilities, top_p):

@@ -11,10 +11,7 @@
 | [**Download**](#2)
 | [**Potter**](#3)
 | [**Generate**](#4)
-| [**Train Your Own Model**](#6)
-| [**Load Your Own Model**](#7)
-| [**Noteable Implementations**](#6)
-| [**More**](#7)
+| [**Train Your Own Model**](#5)
 <div id='1'></div>
 
 ## Overview
@@ -22,6 +19,10 @@
 This is a from scratch implementation of the paper "Attention Is All You Need" in pytorch.  If you want to see a simple implementation of a GPT you are in the right place!  The entire pre-training, generating, tokenizing, training a tokenizer, loading and saving has been built into a class for convience.  This class is simpleGPT.  Addtionally this package contains a pre-trained model on Harry Potter books as proof of concept!  
 
 This is an acedemic exercise, that is essentially an overfitting task.  The right way to train a LLM is from trillons of tokens and millions of GPU hours, then fine-tune for the specific task.
+
+<div align="center">
+    <video src='./potter/potter_gen.mp4' width=800 autoplay loop title='actual model output from this model!'> </video>
+</div>
 
 <br>
 <div id='2'></div>
@@ -65,6 +66,8 @@ gpt.generate(text_lists=['And then Harry said', 'Ron quickly took out his wand',
 <div id='5'></div>
 <br><br>
 
+<div id='4'></div>
+
 ## Train Your Own Model
 ***
 Training your own model is super easy and simpleGPT has everything you need to try out and learn the GPT pre-training process.  All the steps are laid out in this notebook!
@@ -102,8 +105,8 @@ like this: [model training text example](https://raw.githubusercontent.com/codyf
 ```python
 gpt = GPT(device='cuda',                              # cuda, mps or cpu
           tokenizer='path/to/file/tokenizer.model',   # dont forget .model!
-          n_vocab=10_000,                             # must match vocab_size from tokenizer
-          chan_dim=256,                               # internal model channel depth
+          n_vocab=5_000,                             # must match vocab_size from tokenizer
+          chan_dim=1024,                               # internal model channel depth
           n_heads=4,                                  # number of heads per transformer block
           inner_mult=4,                               # upscaling of internal layer in FeedForward
           Nx=8,                                       # number of transformer layers
@@ -112,13 +115,14 @@ gpt = GPT(device='cuda',                              # cuda, mps or cpu
           context_window=256,)                        # length of model context window
 
 gpt.train(corpus_path='/content/simpleGPT/data/corpus.txt',  # the corpus
-          epochs=2,                                          # total training epochs
-          batch_size=128,                                    # batch size
-          grad_acc_steps=8,                                  # number of gradent accumulation steps
-          lr=1e-3,                                           # learning rate
+          epochs=100,                                          # total training epochs
+          batch_size=64,                                    # batch size
+          grad_acc_steps=1,                                  # number of gradent accumulation steps
+          lr=1e-5,                                           # learning rate
           num_workers=12,                                    # for dataloading, 12 is good for A100
           pin_memory=True,                                   # recommended True for GPU 
-          break_at=None)                                     # for testing params! stop at break_at steps
+          break_at=None,                                     # for testing params! stop at break_at steps
+          time_limit_hours=15)                               # optional for colab timeouts
 
 gpt.save_train('/path/to/savefile')  # saves model & training history & params
 
