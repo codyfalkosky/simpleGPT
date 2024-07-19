@@ -20,7 +20,11 @@ This is a from scratch implementation of the paper "Attention Is All You Need" i
 
 This is an acedemic exercise, that is essentially an overfitting task.  The right way to train a LLM is from trillons of tokens and millions of GPU hours, then fine-tune for the specific task.
 
-[![Video Title](https://storage.googleapis.com/codyfalkosky_public/weights/potter_gen.mp4)]
+
+https://github.com/user-attachments/assets/cb7ed472-8754-4b92-a8be-13718f16e9e9
+
+
+![Video Title](https://storage.googleapis.com/codyfalkosky_public/weights/potter_gen.mp4)
 <div align="center">
     <!-- <video src='https://storage.googleapis.com/codyfalkosky_public/weights/potter_gen.mp4' width=800 autoplay loop title='actual model output from this model!'> </video> -->
 </div>
