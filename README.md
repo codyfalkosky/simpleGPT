@@ -1,6 +1,6 @@
 <div align="center">
     <img src="./images/pytorch.png" width="75px" style="vertical-align: middle; padding-right: 10px"></img>
-    <img src="./images/gpt.png" width="150px" style="vertical-align: middle; padding-right: 10px"></img>
+    <img src="./images/GPT.png" width="150px" style="vertical-align: middle; padding-right: 10px"></img>
     <!-- <img src="./images/plus.png" width="50px" style="vertical-align: middle;"></img> -->
 </div>
 
