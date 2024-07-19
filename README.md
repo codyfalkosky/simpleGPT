@@ -1,7 +1,7 @@
 <div align="center">
     <img src="./images/pytorch.png" width="75px" style="vertical-align: middle; padding-right: 10px"></img>
+    <img src="./images/gpt.png" width="150px" style="vertical-align: middle; padding-right: 10px"></img>
     <!-- <img src="./images/plus.png" width="50px" style="vertical-align: middle;"></img> -->
-    <span style="font-size: 75px; vertical-align: middle; padding-left: 10px; font-weight: 500">GPT</span>
 </div>
 
 # "Attention Is All You Need" PyTorch Implementation

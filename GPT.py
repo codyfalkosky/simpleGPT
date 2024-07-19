@@ -89,6 +89,8 @@ class GPT:
         self.loss_history = []
 
         if pre_trained == 'Potter':
+            command = ['wget', 'https://storage.googleapis.com/codyfalkosky_public/weights/potter_weights.pt']
+            subprocess.run(command, check=True)
             for directory, dir_names, file_names in os.walk('.'):
                 if 'potter_weights.pt' in file_names:
                     self.load_weights(directory + '/potter_weights.pt', self.model)
