@@ -40,6 +40,7 @@ git clone https://github.com/codyfalkosky/simpleGPT.git
 <div id='3'></div>
 
 ## Potter
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1a0IZ1fOEd_Y13_dXHO9JBmirCrxjyi-X?usp=sharing)
 ***
 Try out the Harry Potter GPT.
 
