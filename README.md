@@ -22,9 +22,8 @@ This is an academic exercise that is essentially an overfitting task. The right 
 
 https://github.com/user-attachments/assets/cb7ed472-8754-4b92-a8be-13718f16e9e9
 
-<div align="center">
-    <!-- <video src='https://storage.googleapis.com/codyfalkosky_public/weights/potter_gen.mp4' width=800 autoplay loop title='actual model output from this model!'> </video> -->
-</div>
+TRY IT OUT!
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1a0IZ1fOEd_Y13_dXHO9JBmirCrxjyi-X?usp=sharing)
 
 <br>
 <div id='2'></div>
@@ -40,14 +39,13 @@ git clone https://github.com/codyfalkosky/simpleGPT.git
 <div id='3'></div>
 
 ## Potter
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1a0IZ1fOEd_Y13_dXHO9JBmirCrxjyi-X?usp=sharing)
 ***
 Try out the Harry Potter GPT.
 
 ```python
 from simpleGPT import GPT
 
-gpt = GPT('potter') 
+gpt = GPT('Potter') 
 
 ```
 
