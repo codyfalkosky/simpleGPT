@@ -16,9 +16,9 @@
 
 ## Overview
 ***
-This is a from scratch implementation of the paper "Attention Is All You Need" in pytorch.  If you want to see a simple implementation of a GPT you are in the right place!  The entire pre-training, generating, tokenizing, training a tokenizer, loading and saving has been built into a class for convience.  This class is simpleGPT.  Addtionally this package contains a pre-trained model on Harry Potter books as proof of concept!  
+This is a from-scratch implementation of the "Attention Is All You Need" paper in Pytorch.  If you want to see a simple implementation of a GPT you are in the right place!  The entire pre-training, generating, tokenizing, training a tokenizer, loading, and saving has been built into a class for convenience.  This class is simpleGPT.  Additionally, this package contains a pre-trained model on Harry Potter books as proof of concept!  
 
-This is an acedemic exercise, that is essentially an overfitting task.  The right way to train a LLM is from trillons of tokens and millions of GPU hours, then fine-tune for the specific task.
+This is an academic exercise, that is essentially an overfitting task.  The right way to train an LLM is from trillions of tokens and millions of GPU hours, then fine-tune for the specific task.
 
 https://github.com/user-attachments/assets/cb7ed472-8754-4b92-a8be-13718f16e9e9
 
@@ -31,7 +31,7 @@ https://github.com/user-attachments/assets/cb7ed472-8754-4b92-a8be-13718f16e9e9
 
 ## Download
 ***
-To download just clone my repo!
+To download clone my repo!
 
 ```bash
 git clone https://github.com/codyfalkosky/simpleGPT.git
@@ -54,7 +54,7 @@ gpt = GPT('potter')
 
 ## Generate
 ***
-Supports batch generation automatically!  Since this model is pre-trained on a corpus there is no "stopping token", it will just infinitly, until you run out of RAM, write the number of n_gen new tokens.  Set `top_p=0` for greedy decoding, or choose a float up to 1 for more decoding posibilities!  Raise the temperature for more randomness in your generations.
+Supports batch generation automatically!  Since this model is pre-trained on a corpus there is no "stopping token", it will just infinitely, until you run out of RAM, write the number of n_gen new tokens.  Set `top_p=0` for greedy decoding, or choose a float up to 1 for more decoding possibilities!  Raise the temperature for more randomness in your generations.
 
 ```python
 gpt.generate(text_lists=['And then Harry said', 'Ron quickly took out his wand', 'Hermione knew'],
@@ -70,9 +70,9 @@ gpt.generate(text_lists=['And then Harry said', 'Ron quickly took out his wand',
 
 <div id='4'></div>
 
-## Train Your Own Model
+## Train Your Model
 ***
-Training your own model is super easy and simpleGPT has everything you need to try out and learn the GPT pre-training process.  All the steps are laid out in this notebook!
+Training your model is super easy and simpleGPT has everything you need to try out and learn the GPT pre-training process.  All the steps are laid out in this notebook!
 
 ### Step 1: Train a Tokenizer
 
@@ -96,11 +96,11 @@ gpt.train_tokenizer(corpus='path/to/corpus.txt',
 ```
 ### Step 2: Train a Model
 
-Model data is in a different format then tokenizer training data.
+Model data is in a different format than tokenizer training data.
 
 Model data format:
 1. data must be in 1 large txt file (like tokenizer training)
-2. but normal formating. not a new sentence every line (unlike tokenizer training)
+2. but normal formatting. not a new sentence every line (unlike tokenizer training)
 
 like this: [model training text example](https://raw.githubusercontent.com/codyfalkosky/simpleGPT/main/data/corpus.txt)
 
@@ -119,7 +119,7 @@ gpt = GPT(device='cuda',                              # cuda, mps or cpu
 gpt.train(corpus_path='/content/simpleGPT/data/corpus.txt',  # the corpus
           epochs=100,                                          # total training epochs
           batch_size=64,                                    # batch size
-          grad_acc_steps=1,                                  # number of gradent accumulation steps
+          grad_acc_steps=1,                                  # number of gradient accumulation steps
           lr=1e-5,                                           # learning rate
           num_workers=12,                                    # for dataloading, 12 is good for A100
           pin_memory=True,                                   # recommended True for GPU 
