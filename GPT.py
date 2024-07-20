@@ -106,6 +106,7 @@ class GPT:
                 if 'potter_weights.pt' in file_names:
                     found = True
                     self.load_weights(directory + '/potter_weights.pt', self.model)
+                    print('Potter weights loaded: 🧙‍♂️🪄🧹🏰📚🦉⚡🕯️🌟📜🚂')
                     break
             if not found:     
                 command = ['wget', 'https://storage.googleapis.com/codyfalkosky_public/weights/potter_weights.pt']
@@ -113,6 +114,7 @@ class GPT:
                 for directory, dir_names, file_names in os.walk('.'):
                     if 'potter_weights.pt' in file_names:
                         self.load_weights(directory + '/potter_weights.pt', self.model)
+                        print('Potter weights loaded: 🧙‍♂️🪄🧹🏰📚🦉⚡🕯️🌟📜🚂')
                         break
             
 
