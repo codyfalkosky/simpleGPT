@@ -16,9 +16,9 @@
 
 ## Overview
 ***
-This is a from-scratch implementation of the "Attention Is All You Need" paper in Pytorch.  If you want to see a simple implementation of a GPT you are in the right place!  The entire pre-training, generating, tokenizing, training a tokenizer, loading, and saving has been built into a class for convenience.  This class is simpleGPT.  Additionally, this package contains a pre-trained model on Harry Potter books as proof of concept!  
+This is a from-scratch implementation of the "Attention Is All You Need" paper in PyTorch.  If you want to see a simple implementation of a GPT you are in the right place!  The entire pre-training, generating, tokenizing, training a tokenizer, loading, and saving has been built into a class for convenience.  This class is simpleGPT.  Additionally, this package contains a pre-trained model on Harry Potter books as proof of concept!  
 
-This is an academic exercise, that is essentially an overfitting task.  The right way to train an LLM is from trillions of tokens and millions of GPU hours, then fine-tune for the specific task.
+This is an academic exercise, that is essentially an overfitting task. The right way to train an LLM is from trillions of tokens and millions of GPU hours, then fine-tune for the specific task.
 
 https://github.com/user-attachments/assets/cb7ed472-8754-4b92-a8be-13718f16e9e9
 
@@ -54,7 +54,7 @@ gpt = GPT('potter')
 
 ## Generate
 ***
-Supports batch generation automatically!  Since this model is pre-trained on a corpus there is no "stopping token", it will just infinitely, until you run out of RAM, write the number of n_gen new tokens.  Set `top_p=0` for greedy decoding, or choose a float up to 1 for more decoding possibilities!  Raise the temperature for more randomness in your generations.
+Supports batch generation automatically!  Since this model is pre-trained on a corpus, there's no "stopping token".  It will generate infinitely until you run out of RAM. Set `top_p=0` for greedy decoding, or choose a float up to 1 for more decoding possibilities!  Raise the temperature for more randomness in your generations.
 
 ```python
 gpt.generate(text_lists=['And then Harry said', 'Ron quickly took out his wand', 'Hermione knew'],
