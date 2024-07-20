@@ -22,7 +22,7 @@ This is an academic exercise that is essentially an overfitting task. The right 
 
 https://github.com/user-attachments/assets/cb7ed472-8754-4b92-a8be-13718f16e9e9
 
-TRY IT OUT!
+TRY IT OUT!  
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1a0IZ1fOEd_Y13_dXHO9JBmirCrxjyi-X?usp=sharing)
 
 <br>
