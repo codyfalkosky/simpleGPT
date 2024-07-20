@@ -1,5 +1,5 @@
 # ***
-# This is a ground up build of a GPT style model for academic purposes.
+# This is a ground-up build of a GPT-style model for academic purposes.
 # ***
 
 # +
@@ -15,7 +15,7 @@ from torch.nn.init import xavier_normal_, kaiming_normal_
 
 class FeedForward(nn.Module):
     '''
-    Feed Forward Block from from  "Attention is all you Need" (Vaswani et al., 2017)
+    Feed Forward Block from  "Attention is All You Need" (Vaswani et al., 2017)
     implemented as FFN(x) = max(0, xW1 + b1 )W2 + b2
     '''
     def __init__(self, chan_dim=512, inner_mult=4, dropout=.2, device='cpu', **kwargs):
@@ -36,7 +36,7 @@ class FeedForward(nn.Module):
 
 
 class MuliHeadedMaskedSelfAttention(nn.Module):
-    '''from  "Attention is all you Need" (Vaswani et al., 2017)'''
+    '''from  "Attention is All You Need" (Vaswani et al., 2017)'''
     
     def __init__(self, chan_dim=512, n_heads=4, dropout=.2, device='cpu', **kwargs):
         '''
@@ -144,7 +144,7 @@ class PositionalEncoding(nn.Module):
 
 
 class TransformerBlock(nn.Module):
-    '''from  "Attention is all you Need" (Vaswani et al., 2017)'''
+    '''from  "Attention is All You Need" (Vaswani et al., 2017)'''
     def __init__(self, chan_dim=512, n_heads=4, inner_mult=4, dropout=.2, device='cpu', **kwargs):
         '''
         Args:
