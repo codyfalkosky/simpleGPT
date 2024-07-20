@@ -90,12 +90,19 @@ class GPT:
         self.loss_history = []
 
         if pre_trained == 'Potter':
-            command = ['wget', 'https://storage.googleapis.com/codyfalkosky_public/weights/potter_weights.pt']
-            subprocess.run(command, check=True)
+            found = False
             for directory, dir_names, file_names in os.walk('.'):
                 if 'potter_weights.pt' in file_names:
+                    found = True
                     self.load_weights(directory + '/potter_weights.pt', self.model)
                     break
+            if not found:     
+                command = ['wget', 'https://storage.googleapis.com/codyfalkosky_public/weights/potter_weights.pt']
+                subprocess.run(command, check=True)
+                for directory, dir_names, file_names in os.walk('.'):
+                    if 'potter_weights.pt' in file_names:
+                        self.load_weights(directory + '/potter_weights.pt', self.model)
+                        break
             
 
     def train_tokenizer(self, corpus, output_path, vocab_size):
@@ -256,15 +263,15 @@ class GPT:
                     for t in text_out:
                         print(t, '\n')
                 
-                else:
-                    # decode
-                    text_out = []
-                    for batch_idx, tokens in enumerate(all_tokens):
-                        # not_padding = tokens != self.tokenizer.piece_to_id('[PAD]')
-                        text = self.tokenizer.decode(tokens)
-                        text_out.append(text)
-            
-                    return text_out
+        if not show_each:
+            # decode
+            text_out = []
+            for batch_idx, tokens in enumerate(all_tokens):
+                # not_padding = tokens != self.tokenizer.piece_to_id('[PAD]')
+                text = self.tokenizer.decode(tokens)
+                text_out.append(text)
+    
+            return text_out
     
 
     def top_p_sample(self, probabilities, top_p):
