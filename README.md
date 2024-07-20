@@ -70,9 +70,9 @@ gpt.generate(text_lists=['And then Harry said', 'Ron quickly took out his wand',
 
 <div id='4'></div>
 
-## Train Your Model
+## Train Your Own Model
 ***
-Training your model is super easy and simpleGPT has everything you need to try out and learn the GPT pre-training process.  All the steps are laid out in this notebook!
+Training your own model is super easy and simpleGPT has everything you need to try out and learn the GPT pre-training process.  All the steps are laid out in this notebook!
 
 ### Step 1: Train a Tokenizer
 
