@@ -48,7 +48,18 @@ class CorpusDataset(Dataset):
 
 
 class GPT:
-    def __init__(self, pre_trained=None, device='mps', tokenizer=None, n_vocab=10000, chan_dim=1024, n_heads=8, inner_mult=4, Nx=16, max_context=10000, dropout=.3, context_window=128):
+    def __init__(self, pre_trained=None, device='auto', tokenizer=None, n_vocab=10000, chan_dim=1024, n_heads=8, inner_mult=4, Nx=16, max_context=10000, dropout=.3, context_window=128):
+
+        if device == 'auto':
+            if torch.cuda.is_available():
+                print('using cuda')
+                device = 'cuda'
+            elif torch.backends.mps.is_available():
+                print('using mps')
+                device = 'mps'
+            else:
+                print('using cpu')
+                device = 'cuda'
 
         if pre_trained == 'Potter':
             for directory, dir_names, file_names in os.walk('.'):
@@ -72,12 +83,12 @@ class GPT:
         self.device = device
         self.context_window = context_window
 
-        if device != 'mps':
+        if device == 'cuda':
             # print('using torch.compile')
             self.model = torch.compile(Transformer(n_vocab=n_vocab, chan_dim=chan_dim, n_heads=n_heads, 
                                              inner_mult=inner_mult, Nx=Nx, max_context=max_context, 
                                              dropout=dropout, device=device))
-        if device == 'mps':
+        if device != 'cuda':
             # print('NOT using torch.compile')
             self.model = Transformer(n_vocab=n_vocab, chan_dim=chan_dim, n_heads=n_heads, 
                                      inner_mult=inner_mult, Nx=Nx, max_context=max_context, 
@@ -187,7 +198,7 @@ class GPT:
 
     def load_weights(self, state_dict_path, load_to_obj):
 
-        if self.device == 'mps':
+        if self.device != 'cuda':
             state_dict = torch.load(state_dict_path, map_location=self.device)
             new_state_dict = {}
             for k, v in state_dict.items():
