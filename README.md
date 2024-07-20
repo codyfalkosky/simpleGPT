@@ -18,7 +18,7 @@
 ***
 This is a from-scratch implementation of the "Attention Is All You Need" paper in PyTorch.  If you want to see a simple implementation of a GPT you are in the right place!  The entire pre-training, generating, tokenizing, training a tokenizer, loading, and saving has been built into a class for convenience.  This class is simpleGPT.  Additionally, this package contains a pre-trained model on Harry Potter books as proof of concept!  
 
-This is an academic exercise, that is essentially an overfitting task. The right way to train an LLM is from trillions of tokens and millions of GPU hours, then fine-tune for the specific task.
+This is an academic exercise that is essentially an overfitting task. The right way to train an LLM is to use trillions of tokens and millions of GPU hours and then fine-tune it for the specific task.
 
 https://github.com/user-attachments/assets/cb7ed472-8754-4b92-a8be-13718f16e9e9
 
@@ -31,7 +31,7 @@ https://github.com/user-attachments/assets/cb7ed472-8754-4b92-a8be-13718f16e9e9
 
 ## Download
 ***
-To download clone my repo!
+To download, clone my repo!
 
 ```bash
 git clone https://github.com/codyfalkosky/simpleGPT.git
@@ -100,7 +100,7 @@ Model data is in a different format than tokenizer training data.
 
 Model data format:
 1. data must be in 1 large txt file (like tokenizer training)
-2. but normal formatting. not a new sentence every line (unlike tokenizer training)
+2. but normal formatting, not a new sentence every line (unlike tokenizer training)
 
 like this: [model training text example](https://raw.githubusercontent.com/codyfalkosky/simpleGPT/main/data/corpus.txt)
 
